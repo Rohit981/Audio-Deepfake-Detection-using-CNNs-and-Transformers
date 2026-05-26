@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, WeightedRandomSampler
 import numpy as np
 import torch
 from tqdm import tqdm
+import random
 
 class ASVpoofDataset(Dataset):
     def __init__(self, base_dir, part="train", sr=16000, n_mels=128,precompute=False):
@@ -33,13 +34,12 @@ class ASVpoofDataset(Dataset):
             self.pre_compute_mel_spec()
 
         #Cache all arrays straight into RAM to avoid disk bottlenecks
-        if part == "train" or part=="dev":
-            print(f"Loading {part} dataset into RAM...")
-            self.cached_features=[]
-            for file_name in tqdm(self.file_list, desc="Ram-caching"):
-                npy_path = os.path.join(self.save_dir, f"{file_name}.npy")
-                # Read from disk exactly once here
-                self.cached_features.append(np.load(npy_path))
+        print(f"Loading {part} dataset into RAM...")
+        self.cached_features=[]
+        for file_name in tqdm(self.file_list, desc="Ram-caching"):
+            npy_path = os.path.join(self.save_dir, f"{file_name}.npy")
+            # Read from disk exactly once here
+            self.cached_features.append(np.load(npy_path))
 
     def _parse_protocol(self, protocol_file):
         files,labels = [], []
@@ -118,9 +118,8 @@ class ASVpoofDataset(Dataset):
     def __getitem__(self, index):
 
         # npy_path = os.path.join(self.save_dir, f"{self.file_list[index]}.npy")
-
         mel_decb = self.cached_features[index]
-       
+        
         #Convert to pytorch labels
         X_tensor = torch.from_numpy(mel_decb).float()
 
@@ -132,6 +131,48 @@ class ASVpoofDataset(Dataset):
         Y_tensor = torch.tensor(self.file_labels[index], dtype=torch.float32)
 
         return X_tensor, Y_tensor
+    
+class Augmentation:
+    def __init__(self, frequency_mask_param=6, time_mask_param=8, noise_prob=0.3):
+        self.freq_mask_param = frequency_mask_param
+        self.time_mask_param = time_mask_param
+        self.noise_prob = noise_prob
+    
+    def forward(self,x):
+        #X shape expected: [Channels=1, freq=128, Time=128]
+
+        augmented_x = x.clone()
+
+        #Frequency masking(SpecAugmentation)
+        #Select a random strip of frequencies and sets them to low background value
+        if random.random() > 0.3:
+            f = random.randint(0,self.freq_mask_param)
+            #x.size(-2) targets the frequency axis (128) safely
+            max_f0 = x.size(-2) - f
+            if max_f0 > 0:
+                f0 = random.randint(0, x.size(-2) -f)
+                augmented_x[:,f0:f0+f, :] = -80.0 # -80dB represents silence
+        
+        #Time Masking (SpecAugmentation)
+        #Select a random strip of time and sets them to low background value
+        if random.random() > 0.3:
+            t = random.randint(0,self.time_mask_param)
+            #x.size(-1) targets the frequency axis (128) safely
+            t0_max = x.size(-1) - t
+            if t0_max > 0:
+                t0 = random.randint(0, x.size(-1) - t)
+                augmented_x[:,:,t0:t0+t] = -80.0
+        
+        #Dynamic Relative Gaussian Noise
+        if random.random() < self.noise_prob:
+            #Randomly select noise intensity factor per sample
+            noise_factor = random.uniform(0.01,0.05)
+            std_dev = augmented_x.std()
+            noise = torch.randn_like(augmented_x)*std_dev*noise_factor
+            augmented_x = augmented_x + noise
+        
+        return augmented_x
+         
 
 
 

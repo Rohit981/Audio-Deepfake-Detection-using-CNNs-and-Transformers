@@ -1,0 +1,23 @@
+========================================
+INITIAL EVALUATION: CNNTrasnformer
+========================================
+Model Name: CNNTrasnformer
+Epochs: 10
+Training Time: 77.90 seconds
+Highest Val Acc: 0.8166
+Default Test Acc: 0.3381
+Test ROC-AUC: 0.9718
+Test EER (%): 9.01%
+Optimal Threshold: 0.000690
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: CNNTrasnformer
+Epochs: 10
+Training Time: 78.11 seconds
+Highest Val Acc: 0.8166
+Default Test Acc: 0.3488
+Test ROC-AUC: 0.9741
+Test EER (%): 8.61%
+Optimal Threshold: 0.000728

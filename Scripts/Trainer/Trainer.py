@@ -3,14 +3,20 @@ import torch.nn as nn
 import torch.optim as optim
 import os
 import torch.utils.data.dataloader as dataloader
-from tqdm import tqdm
+from tqdm import tqdm,trange
 from sklearn.metrics import f1_score, recall_score
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from data import Augmentation
+import time
 
-class ModelTrainer:
-    def __init__(self, model, device, loss_fn,learning_rate, 
-                 batch_size,sampler, save_dir, model_name, start_from_checkpoint=False):
+class ModelTrainer(nn.Module):
+    def __init__(self, 
+                 model, 
+                 device, 
+                 loss_fn,
+                 learning_rate, 
+                 batch_size,sampler,
+                 start_from_checkpoint=False):
         super(ModelTrainer,self).__init__()
         
         #Intialize variables for training and evaluation
@@ -24,6 +30,8 @@ class ModelTrainer:
         self.sampler = sampler
         self.best_valid_acc = 0
         self.lr_history = []
+        self.training_time = 0
+        self.start_from_checkpoint = start_from_checkpoint
 
         self.train_loader = None
         self.test_loader = None
@@ -34,32 +42,25 @@ class ModelTrainer:
         self.train_acc = []
         self.val_acc = []
 
+        #Extract model name
+        self.model_name = getattr(model,'architecture_name',model.__class__.__name__) 
+
         #Set Optimizer
         self.set_optimizer()
 
         #Initilaize a LR scheduler
         self.scheduler = CosineAnnealingLR(self.optimizer, 
-                                            T_max=50,
+                                            T_max=100,
                                             eta_min=1e-6)
         
         #Create save path
-        self.save_path = os.path.join(save_dir, model_name + ".pt")
-        self.save_dir = save_dir
+        save_dir = r"D:\Deep Neural Network\ML-Audio_DeepFake\Models"
+        self.save_path = os.path.join(save_dir, self.model_name + ".pt")
 
-        #Check if the dir exits, if not then make it
-        if not os.path.isdir(self.save_dir):
-            os.makedirs(self.save_dir)
-        
-        if start_from_checkpoint:
-            self.Load_checkpoint()
-        else:
-            #If checkpoint doesn't exist and start_from_checkpoint is False
-            #then raise an error
-            if os.path.isfile(self.save_path):
-                raise ValueError("Warning checkpoint exists")
-            else:
-                print("Starting from scratch")
-        
+        #Initalize the checkpoint check
+        self.check_Checkpoint(save_dir)
+
+    
         #Intialize Augmentation class for X data
         self.augmentation = Augmentation(frequency_mask_param=8,
                                          time_mask_param=12,
@@ -69,6 +70,7 @@ class ModelTrainer:
     #Set optimizer
     def set_optimizer(self):
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate,weight_decay=1e-3)
+        
     
     #Set data loader for test and train
     def set_data(self, train_set, test_set, val_set):
@@ -80,6 +82,31 @@ class ModelTrainer:
         self.train_loader = dataloader.DataLoader(train_set, batch_size=self.batch_size,sampler=self.sampler, num_workers=0, pin_memory=True)
         self.test_loader = dataloader.DataLoader(test_set, batch_size=self.batch_size, shuffle=False, num_workers=0)
         self.val_loader = dataloader.DataLoader(val_set, batch_size=self.batch_size, shuffle=False, num_workers=0)
+    
+    #Checkpoint Check
+    def check_Checkpoint(self,save_dir):
+        #Check if the dir exits, if not then make it
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+        
+        if self.start_from_checkpoint:
+            self.Load_checkpoint()
+        else:
+            #If checkpoint does exist and start_from_checkpoint is False
+            #then raise an error
+            #Clean the model name to safely create a filename
+            model_name_clean = str(self.model_name).replace(" ", "_")
+            filename = f"{model_name_clean}.pt"
+            filepath = os.path.join(save_dir,filename)
+
+            #Check if the specific file already exists
+            file_exists = os.path.isfile(filepath)
+
+            if file_exists:
+                raise ValueError("Warning checkpoint exists")
+            else:
+                print("Starting from scratch")
+
 
     #Load checkpoint and start from best epoch
     def Load_checkpoint(self):
@@ -124,7 +151,7 @@ class ModelTrainer:
 
 
     #This function will perform single training epoch using our training data
-    def Training(self):
+    def TrainingLoop(self):
 
         #Check for if training dataset is available
         if self.train_loader == None:
@@ -171,7 +198,7 @@ class ModelTrainer:
         self.scheduler.step() 
         
     #Evaluation of model this runs per one epoch
-    def eval_model(self, train_test_val = "test"):
+    def evalModel(self, train_test_val = "test"):
         #Check for data loader
         if self.test_loader is None:
             print(f"No test loader available")
@@ -250,6 +277,66 @@ class ModelTrainer:
         
         return epoch_loss,epoc_acc,f1,recall,all_preds,all_labels,all_probs
     
+   
+    def RunEpochs(self,train_dataset, test_dataset, val_dataset,n_epochs):
+        #Set Data Loader
+        self.set_data(train_set=train_dataset,test_set=test_dataset,val_set=val_dataset)
+
+        #Train and val
+        pbar = trange(self.start_epoch, n_epochs, leave=False, desc="Epoch")
+
+        #Track of time for evaluation and learning rate history
+        start_time = time.time()
+
+        #Initializing early stopping variables
+        patience = 10 #Stop training if val_loss doesn't improve for 10 epochs straight
+        patience_counter = 0
+        best_val_loss = float('inf')
+        
+        for epoch in pbar:
+            self.TrainingLoop()
+            
+            #Calculate evaluation
+            _, train_acc,_,_, _, _, _= self.evalModel(train_test_val="train")
+            val_loss, val_acc,val_f1,val_recall, _, _, _ = self.evalModel(train_test_val="val")
+
+            train_loss = self.train_loss[-1]
+
+            print(f" Train Accuracy: {train_acc:.4f} |"
+                f" Train Loss: {train_loss:.4f} |"
+                f" Val Accuracy: {val_acc:.4f} |"
+                f" Val Loss: {val_loss:.4f} |"
+                f"F1 score: {val_f1:.4f} |"
+                f"Recall score: {val_recall:.4f}")
+            
+            #Check if the current validation accuracy is greater than the previous best
+            if val_acc > self.best_valid_acc:
+                self.save_checkpoint(epoch,val_acc)
+            
+            #Early Stopping to halt model training before overfitting
+            current_val_loss = val_loss 
+
+            #Check for improvement
+            if current_val_loss < best_val_loss:
+                best_val_loss = current_val_loss
+                patience_counter = 0 #Reset the clock because model improved
+            else:
+                patience_counter +=1
+                print(f"Validation loss did not improve. Early Stopping counter: {patience_counter}")
+            
+            if patience_counter >=patience:
+                print(f"Early Stopping trigger at epoch {epoch}! Stopping training to prevent overfitting")
+                break
+            
+            
+        end_time = time.time()
+
+        self.training_time = end_time - start_time
+
+        print(f"The highest validation accuracy was: {self.best_valid_acc:.4f}" )
+        print("Training time %.2f seconds" %( self.training_time))
+    
+
     def forward(self,x):
         return self.model(x)
         

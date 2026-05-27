@@ -3,7 +3,10 @@ import torch.nn as nn
 from CNNTrasnformer.TransformerModel import MultiHeadAttention, PositionalEncoding, PositionWiseFeedForward
 
 class CNN(nn.Module):
-    def __init__(self, input_dim=1, layer_channels=[32.64,128], dropout_value=0.2):
+    def __init__(self, 
+                 input_dim=1, 
+                 layer_channels=[32.64,128], 
+                 dropout_value=0.2):
         super().__init__()
         #Initialize Input and Output
         self.input_dim = input_dim
@@ -45,7 +48,11 @@ class CNN(nn.Module):
     
 #Encoder using Multiheaded attention and positional wise feed forward
 class EncoderBlock(nn.Module):
-    def __init__(self, d_model, num_heads,d_ff, dropout_value=0.3):
+    def __init__(self, 
+                 d_model, 
+                 num_heads,
+                 d_ff, 
+                 dropout_value=0.3):
         super().__init__()
 
         #First Layer which is Multiheaded and Layer Norm
@@ -72,7 +79,12 @@ class EncoderBlock(nn.Module):
 
 #Transformer Layer uses the encoder block and does classification
 class TransformerLayer(nn.Module):
-    def __init__(self, d_model=128, n_heads=4, num_layers=3,d_ff=512,num_classes=1):
+    def __init__(self, 
+                 d_model=128, 
+                 n_heads=4, 
+                 num_layers=3,
+                 d_ff=512,
+                 num_classes=1):
         super().__init__()
 
         #Positional Encoding class
@@ -106,8 +118,12 @@ class TransformerLayer(nn.Module):
 
 #Define a CNN Transformer Model
 class CNNTrasnformer(nn.Module):
-    def __init__(self, input_dim=1, layer_channels=[32,64,128], 
-                 n_heads=4,num_layers=3,d_ff=512):
+    def __init__(self, 
+                 input_dim=1, 
+                 layer_channels=[32,64,128], 
+                 n_heads=4,
+                 num_layers=3,
+                 d_ff=512):
         super().__init__()
 
         #Initialize Dynamic CNN

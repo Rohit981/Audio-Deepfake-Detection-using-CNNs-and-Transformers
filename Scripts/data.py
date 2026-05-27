@@ -8,10 +8,11 @@ from tqdm import tqdm
 import random
 
 class ASVpoofDataset(Dataset):
-    def __init__(self, base_dir, part="train", sr=16000, n_mels=128,precompute=False):
+    def __init__(self,part="train", sr=16000, n_mels=128,precompute=False):
         super().__init__()
-
-        self.base_dir = base_dir
+        
+        Data_root = r"D:\Deep Neural Network\ML-Audio_DeepFake\Datasets\LA"
+        self.base_dir = Data_root
         self.part = part
         self.audio_dir = os.path.join(self.base_dir, f"ASVspoof2019_LA_{part}", "flac")
         protocol_file = os.path.join(self.base_dir, "ASVspoof2019_LA_cm_protocols", 

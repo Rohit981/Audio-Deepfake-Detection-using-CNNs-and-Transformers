@@ -137,9 +137,13 @@ class Resnet(nn.Module):
 
 #Define Resnet 50
 def Resnet50(num_classes, channels=1):
-    return Resnet(BottleNeck, [3,4,6,3], num_classes, num_channels=channels)
+    model = Resnet(BottleNeck, [3,4,6,3], num_classes, num_channels=channels)
+    model.architecture_name = "Resnet50"
+    return model
 
 def Resnet18(num_classes, channels=1):
-    return Resnet(Block, [2,2,2,2], num_classes,channels)
+    model = Resnet(Block, [2,2,2,2], num_classes,channels)
+    model.architecture_name = "Resnet18"
+    return model
 
 

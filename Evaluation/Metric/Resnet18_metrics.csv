@@ -1,0 +1,11 @@
+========================================
+INITIAL EVALUATION: Resnet18
+========================================
+Model Name: Resnet18
+Epochs: 10
+Training Time: 13.03 seconds
+Highest Val Acc: 0.9995
+Default Test Acc: 0.8487
+Test ROC-AUC: 0.9808
+Test EER (%): 7.78%
+Optimal Threshold: 0.000490

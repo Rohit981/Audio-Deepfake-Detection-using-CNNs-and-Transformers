@@ -8,7 +8,8 @@ class AudioConfig:
      device : torch.device = "cuda" if torch.cuda.is_available() else "cpu"
 
      #----------------------Save Directory-------------------------------
-     leaderBoard_savedir : str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Metric"
+     leaderBoard_savedir : str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Metric\LeaderBoard"
+     classification_savedir : str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Metric\Confusion&Classification Report"
 
      #----------------------LeaderBoard Metrics--------------------------
      highest_val_acc: float = None
@@ -34,6 +35,6 @@ class AudioConfig:
      learning_rate: float = 1e-4
      n_epochs : int = 100
      patience : int = 10
-     start_from_checkpoint : bool = False
+     start_from_checkpoint : bool = True     
 
      

@@ -39,7 +39,7 @@ def main():
     VIT = VisionTransformer.VIT(config)
 
     #Track of active model
-    active_model = Resnet_50
+    active_model = CNN_Transformer
 
     #Initialize Trainer and run the epochs
     trainer = Trainer.ModelTrainer(model=active_model, 
@@ -69,13 +69,12 @@ def main():
     config.optimal_threshold = eval_metric.optimal_threshold
 
 
-    leaderboard = ResultLeaderboard(config=config)
+    leaderboard = ResultLeaderboard(config=config,
+                                    model_name=trainer.model_name)
     leaderboard.add_run(
-        model_name=trainer.model_name,
         metrics=leaderboard.set_final_metric(),
         classification_report=eval_metric.classification_report,
         confusion_matrix=eval_metric.Conf_list
-
     )
     
 

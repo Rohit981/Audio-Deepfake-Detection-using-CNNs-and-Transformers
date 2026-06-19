@@ -8,6 +8,8 @@ from sklearn.metrics import f1_score, recall_score
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from data import Augmentation
 import time
+from Resnet50 import CustomResnet50
+import torch.nn.functional as F
 
 class ModelTrainer(nn.Module):
     def __init__(self, 
@@ -16,7 +18,12 @@ class ModelTrainer(nn.Module):
                  loss_fn,
                  learning_rate, 
                  batch_size,sampler,
-                 start_from_checkpoint=False):
+                 start_from_checkpoint=False,
+                 teacher_present=False,
+                 Temperature = 1.0,
+                 alpha = 0.5,
+                 distil_type = "hard",
+                 optimal_threshold = None):
         super(ModelTrainer,self).__init__()
         
         #Intialize variables for training and evaluation
@@ -33,6 +40,11 @@ class ModelTrainer(nn.Module):
         self.training_time = 0
         self.start_from_checkpoint = start_from_checkpoint
 
+        if optimal_threshold is None:
+            self.optimal_threshold = 0.5
+        else:
+            self.optimal_threshold = optimal_threshold
+
         self.train_loader = None
         self.test_loader = None
         self.val_loader = None
@@ -43,7 +55,24 @@ class ModelTrainer(nn.Module):
         self.val_acc = []
 
         #Extract model name
-        self.model_name = getattr(model,'architecture_name',model.__class__.__name__) 
+        base_name = getattr(model,'architecture_name',model.__class__.__name__)
+
+        #Set teacher present bool based on if DEIT model is active or not
+
+        if base_name == "DEIT":
+            self.model_name = f"{base_name}_{distil_type}"
+            teacher_present = True
+        else:
+            self.model_name = base_name
+            teacher_present = False
+
+        #Set teacher model as ResNet50 and Load Resnet Model if teacher is present
+        self.teacher_present = teacher_present
+        if  self.teacher_present == True:
+            self.teacher_resnet = self.LoadResnetModel()
+            self.temperature = Temperature
+            self.alpha = alpha
+            self.distil_type = distil_type 
 
         #Set Optimizer
         self.set_optimizer()
@@ -66,10 +95,27 @@ class ModelTrainer(nn.Module):
                                          time_mask_param=12,
                                          noise_prob=0.4)
 
+    #Load Resnet50 Model as teacher model
+    def LoadResnetModel(self):
+        #Load the custom Resnet 50 model
+        teacher_resnet = CustomResnet50.Resnet18(num_classes=1)
+        # teacher_resnet.fc = nn.Linear(teacher_resnet.fc.in_features, 1)
+
+        #Rebuild and load the saved checkpoints from optimized Resnet18 model from the project
+        checkpoint = torch.load("./Models/Resnet18.pt", map_location=self.device)
+        teacher_resnet.load_state_dict(checkpoint['model_state_dict'])
+
+        #Freeze the teacher
+        teacher_resnet.to(self.device)
+        teacher_resnet.eval()
+        for param in teacher_resnet.parameters():
+            param.requires_grad = False
+
+        return teacher_resnet
 
     #Set optimizer
     def set_optimizer(self):
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate,weight_decay=1e-3)
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate,weight_decay=1e-3)
         
     
     #Set data loader for test and train
@@ -167,20 +213,24 @@ class ModelTrainer(nn.Module):
 
             X = self.augmentation.forward(X)
 
-            #Forward pass
-            y_pred = self.model(X)
-
-            #Set Loss
-            loss = self.loss_fn(y_pred, Y.unsqueeze(1))
-            
             #Zero out gradient
             self.optimizer.zero_grad()
 
+            #If 
+            if self.teacher_present == True:
+                loss = self.Deit_Train(X,Y)
+            else:
+                #Forward pass
+                y_pred = self.model(X)
+
+                #Set Loss
+                loss = self.loss_fn(y_pred, Y.unsqueeze(1))
+
+                #Gradient Clipping
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            
             #Backpropogation and set gradient
             loss.backward()
-
-            #Gradient Clipping
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
 
             #Record the Learning Rate
             current_lr = self.optimizer.param_groups[0]['lr']
@@ -195,7 +245,44 @@ class ModelTrainer(nn.Module):
         epoch_train_loss /= len(self.train_loader)
 
         self.train_loss.append(epoch_train_loss)
-        self.scheduler.step() 
+        self.scheduler.step()
+
+    def Deit_Train(self,X,Y):
+           #Forward pass for student returns raw un activated binary logits for both heads
+            logits_cls, logits_distil = self.model(X)
+
+            #Extract raw un-activated binary logits from frozen audio native ResNet teacher
+            with torch.no_grad():
+                teacher_logits = self.teacher_resnet(X).squeeze(-1)
+            
+            #Base loss: Always evaluate the CLS head against true dataset labels
+            loss_ground_truth = self.loss_fn(logits_cls,Y)
+            loss_distillaton = 0
+
+            #Distillation loss: Branch dynamically based on experiment type
+            if self.distil_type == "Hard":
+                #Hard Distillation
+                #Calculate teacher hard labels
+                teacher_hard_labels = (torch.sigmoid(teacher_logits)>=0.5).float()
+
+                #Calcualte loss using standard BCE with logits alignment
+                loss_distillaton = self.loss_fn(logits_distil,teacher_hard_labels)
+            
+            elif self.distil_type == "Soft":
+                #Soft Distillation
+                #Soften teacher's probabilty distribution using Temperature scaling
+                soft_teacher_targets = torch.sigmoid(teacher_logits/self.temperature)
+
+                #Soften student's distillation head distribution identically
+                soft_student_preds = torch.sigmoid(logits_distil/self.temperature)
+                
+                #Calculate loss and scale gradient back by multiplying by T^2
+                loss_distillaton = F.binary_cross_entropy(soft_student_preds, soft_teacher_targets)*(self.temperature**2)
+            
+            loss = (1-self.alpha) * loss_ground_truth + self.alpha*loss_distillaton
+
+            return loss
+
         
     #Evaluation of model this runs per one epoch
     def evalModel(self, train_test_val = "test"):
@@ -235,33 +322,40 @@ class ModelTrainer(nn.Module):
                 #Set X, Y to device
                 X,Y = X.to(self.device), Y.to(self.device)
 
-                #Forward pass
-                fx = self.model(X)
+                if self.teacher_present == True:
+                    logits_cls, logits_distil = self.model(X)
+                    fx = (logits_cls+logits_distil)/2
+                else:   
+                    #Forward pass
+                    fx = self.model(X).squeeze(1) if len(self.model(X).shape) > 1 else self.model(X)
+
+                # Ensure fx is squeezed down to [Batch] if a standard model returns [Batch, 1]
+                if len(fx.shape) > 1:
+                    fx = fx.squeeze(-1)
 
                 #Loss
-                loss = self.loss_fn(fx, Y.unsqueeze(1))
+                loss = self.loss_fn(fx, Y)
                 epoch_loss += loss.item()
 
                 #Log sum of acc for BCE
                 probs = torch.sigmoid(fx)
-                preds = (probs > 0.5).float()
-                # epoc_acc += (preds.squeeze(1) == Y).sum().item()
-                correct_pred += (preds.squeeze(1) == Y).sum().item()
-                sample += Y.size(0)
+                probs_flat = probs.view(-1)
+                preds = (probs_flat > self.optimal_threshold).float()
+                labels_flat = Y.view(-1)
+                
+                correct_pred += (preds == labels_flat).sum().item()
+                sample += labels_flat.size(0)
 
                 #Calculate preds and labels for F1 and recall score
-                all_preds.extend(preds.squeeze(1).cpu().numpy().astype(int))
-                all_labels.extend(Y.cpu().numpy().astype(int))
+                all_preds.extend(preds.cpu().numpy().astype(int))
+                all_labels.extend(labels_flat.cpu().numpy().astype(int))
 
                 #Calculate probs for ROC Curve and auc score
-                all_probs.extend(probs.squeeze(1).cpu().numpy())
+                all_probs.extend(probs_flat.cpu().numpy())
 
         
         epoc_acc = correct_pred/sample
         epoch_loss /=len(loader)
-        # self.all_preds = all_preds
-        # self.all_labels = all_labels
-        # self.all_probs = all_probs
         
         #Log accuracy, loss, F1 and recall from the epoch
         if train_test_val == "train":

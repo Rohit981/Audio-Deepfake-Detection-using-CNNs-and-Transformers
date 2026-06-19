@@ -35,6 +35,9 @@ class AudioConfig:
      learning_rate: float = 1e-4
      n_epochs : int = 100
      patience : int = 10
-     start_from_checkpoint : bool = True     
+     start_from_checkpoint : bool = True
+     Temperature: float = 1.0 #Only use if distill is soft
+     alpha: float = 0.5 #50/50 balance between ground truth and distillation
+     distil_type: str = "Hard" #Option hard or soft
 
      

@@ -91,7 +91,7 @@ class ResultLeaderboard:
                 # Keep the entry with the lower EER score
                 older = float(unique_runs[name]["Test EER (%)"].replace("%", ""))
                 newer = float(r["Test EER (%)"].replace("%", ""))
-                if newer < older:
+                if newer <= older:
                     unique_runs[name] = r
 
         sorted_runs = list(unique_runs.values())

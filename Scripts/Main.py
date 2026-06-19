@@ -4,7 +4,7 @@ import os
 from Resnet50 import CustomResnet50
 from Trainer import Trainer
 import torch.nn as nn  
-from Transformer import CnnTrasnformer,VisionTransformer,SwinTransformer
+from Transformer import CnnTrasnformer,VisionTransformer,SwinTransformer, DEIT
 import evaluation
 from config import AudioConfig
 from Utils.Leaderboard import ResultLeaderboard
@@ -41,8 +41,11 @@ def main():
     #Swin Transformer
     swin = SwinTransformer.Swin(config)
 
+    #DEIT Model
+    deit = DEIT.DEIT(config)
+
     #Track of active model
-    active_model = swin
+    active_model = CNN_Transformer
 
     #Initialize Trainer and run the epochs
     trainer = Trainer.ModelTrainer(model=active_model, 
@@ -51,7 +54,11 @@ def main():
                                    learning_rate=config.learning_rate, 
                                    batch_size=config.batch_size,
                                    sampler=sampler,
-                                   start_from_checkpoint=config.start_from_checkpoint)
+                                   start_from_checkpoint=config.start_from_checkpoint,
+                                   Temperature=config.Temperature,
+                                   alpha=config.alpha,
+                                   distil_type=config.distil_type,
+                                   optimal_threshold=config.optimal_threshold)
 
     trainer.RunEpochs(train_dataset=train_dataset,
                       test_dataset=test_dataset,
@@ -63,15 +70,16 @@ def main():
     eval_metric =  evaluation.Evaluation_metric(Trainer=trainer,
                                  model=active_model,
                                  total_training_time=trainer.training_time,
-                                 config=config)
+                                 config=config,
+                                 distil_type=config.distil_type)
     
     #Initialize Leaderboard and set config variables
     config.test_acc = eval_metric.test_acc
     config.roc_auc_value = eval_metric.roc_value
     config.eer_value = eval_metric.eer_value
     config.optimal_threshold = eval_metric.optimal_threshold
-
-
+    trainer.optimal_threshold = config.optimal_threshold
+    
     leaderboard = ResultLeaderboard(config=config,
                                     model_name=trainer.model_name)
     leaderboard.add_run(

@@ -122,6 +122,8 @@ class CNNTrasnformer(nn.Module):
     def __init__(self, config:AudioConfig):
         super().__init__()
 
+        self.architecture_name = "CNNTRANSFORMER"
+
         #Initialize Dynamic CNN
         self.cnn = CNN(config.in_channels,
                        config.input_layer_channels)

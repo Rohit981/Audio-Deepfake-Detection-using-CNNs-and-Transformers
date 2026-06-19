@@ -1,0 +1,82 @@
+{
+    "DEIT_Hard": {
+        "timestamp": "2026-06-18 18:52:09",
+        "Classification Report": {
+            "bonafide": {
+                "precision": 0.49615790266686755,
+                "recall": 0.8954452753229096,
+                "f1-score": 0.6385185903339958,
+                "support": 7355.0
+            },
+            "spoof": {
+                "precision": 0.9867329158256128,
+                "recall": 0.8953069722300492,
+                "f1-score": 0.9387992941852353,
+                "support": 63882.0
+            },
+            "accuracy": 0.8953212515967826,
+            "macro avg": {
+                "precision": 0.7414454092462401,
+                "recall": 0.8953761237764795,
+                "f1-score": 0.7886589422596155,
+                "support": 71237.0
+            },
+            "weighted avg": {
+                "precision": 0.936082562472965,
+                "recall": 0.8953212515967826,
+                "f1-score": 0.907796239918129,
+                "support": 71237.0
+            }
+        },
+        "Confusion Matrix": [
+            [
+                6586,
+                6688
+            ],
+            [
+                769,
+                57194
+            ]
+        ]
+    },
+    "DEIT_hard": {
+        "timestamp": "2026-06-18 14:52:50",
+        "Classification Report": {
+            "bonafide": {
+                "precision": 0.49765896390273373,
+                "recall": 0.8959891230455472,
+                "f1-score": 0.6398990144195756,
+                "support": 7355.0
+            },
+            "spoof": {
+                "precision": 0.9868092076903181,
+                "recall": 0.8958705112551266,
+                "f1-score": 0.9391435627723033,
+                "support": 63882.0
+            },
+            "accuracy": 0.8958827575557645,
+            "macro avg": {
+                "precision": 0.7422340857965259,
+                "recall": 0.8959298171503369,
+                "f1-score": 0.7895212885959395,
+                "support": 71237.0
+            },
+            "weighted avg": {
+                "precision": 0.9363059573701519,
+                "recall": 0.8958827575557645,
+                "f1-score": 0.9082474883568407,
+                "support": 71237.0
+            }
+        },
+        "Confusion Matrix": [
+            [
+                6590,
+                6652
+            ],
+            [
+                765,
+                57230
+            ]
+        ]
+    }
+}

@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 from Transformer.TransformerModel import MultiHeadAttention, PositionWiseFeedForward
 from config import AudioConfig
+import torchvision.models as models
+from tqdm import tqdm
+import torch.optim as optim
 
 
 #Patch encoding to create patches of images and will be used as positional encoder
@@ -25,18 +28,21 @@ class PatchEmbedding(nn.Module):
         # (128 // 16) ** 2 = 8 * 8 = 64 patches
         num_patches = (img_size // patch_size)**2
 
-        # Learnable tokens
+        # Define CLS token and Distillation token
         self.cls_token = nn.Parameter(torch.zeros(1,1,embed_dim))
+        self.dist_token = nn.Parameter(torch.zeros(1,1,embed_dim))
 
-        # Must be num_patches + 1 to account for the CLS token, and end with embed_dim
-        self.pos_embed = nn.Parameter(torch.randn(1,num_patches+1,embed_dim))
+        # Must be num_patches + 2 to account for the CLS and Distil token, and end with embed_dim
+        self.pos_embed = nn.Parameter(torch.randn(1,num_patches+2,embed_dim))
     
     def forward(self,x):
         B = x.size(0)
         x = self.proj(x) # (B,C, H/P, W/P)
         x = x.flatten(2).transpose(1,2) # (B,N,E)
+
         cls_token = self.cls_token.expand(B,-1,-1)
-        x = torch.cat((cls_token,x),dim=1)
+        distil_token = self.dist_token.expand(B,-1,-1)
+        x = torch.cat((cls_token,distil_token, x),dim=1)
         x = x + self.pos_embed
         return x
 
@@ -92,8 +98,9 @@ class TransformerLayer(nn.Module):
             for _ in range(num_layers)
         ])
 
-        #Classification Head outputing 1 logits for BCELogitsLoss
-        self.fc = nn.Linear(d_model,num_classes)
+        #Classification Head outputing cls and distil logits for BCELogitsLoss
+        self.fc_cls = nn.Linear(d_model,num_classes) # map ground truth
+        self.fc_dist = nn.Linear(d_model,num_classes) #map teacher context
     
     def forward(self,x):
         x = self.dropout(x)
@@ -103,16 +110,22 @@ class TransformerLayer(nn.Module):
             x = layer(x)
         
         # Standard ViT Method: Slice out just the CLS Token vector
-        x = x[:,0] # Shape: [Batch, d_model]
+        cls_token_vector = x[:,0] # Index 0 = CLS Token
+        
+        #Slice out the distil token vector
+        distil_token_vector = x[:,1] # Index 1 = distil Token
 
-        #Final Projection layer
-        x = self.fc(x)
-        return x
+        #Project them independently
+        logits_cls = self.fc_cls(cls_token_vector).squeeze(-1) #Shape: [Batch]
+        logits_distil = self.fc_dist(distil_token_vector).squeeze(-1) #Shape: [Batch]
+
+        return logits_cls,logits_distil
 
 #Vision Transformer
-class VIT(nn.Module):
+class DEIT(nn.Module):
     def __init__(self, config: AudioConfig):
         super().__init__()
+        self.architecture_name = "DEIT"
 
         #Convert image space to token sequence space
         self.patchembedding = PatchEmbedding(
@@ -140,9 +153,11 @@ class VIT(nn.Module):
 
         #Pass token vectors directly into the encoder blocks & classification head
         # Output shape: [Batch, 1]
-        x = self.transformerLayer(x)
+        logits_cls, logits_distil = self.transformerLayer(x)
 
-        return x
+        return logits_cls,logits_distil
+
+
 
 
 

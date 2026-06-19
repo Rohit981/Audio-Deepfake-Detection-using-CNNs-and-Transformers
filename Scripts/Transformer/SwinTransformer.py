@@ -43,7 +43,8 @@ class WindowAttention(nn.Module):
         self.proj = nn.Linear(d_model,d_model)
 
         #Relative Position bias this creates a table for Q and K indices
-        coords = torch.stack(torch.meshgrid(torch.arange(win), torch.arange(win), indexing="ij"))
+        coords = torch.stack(torch.meshgrid(torch.arange(win), torch.arange(win), 
+                                            indexing="ij"))
         coords_flatten = coords.flatten(1)
         
         #Calculate the relative position

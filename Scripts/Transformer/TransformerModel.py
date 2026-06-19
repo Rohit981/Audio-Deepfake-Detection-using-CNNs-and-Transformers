@@ -70,10 +70,10 @@ class PositionWiseFeedForward(nn.Module):
         # d_ff is the dimensionality of the inner layer in the feed forward network
         self.fc1 = nn.Linear(d_model,d_ff)
         self.fc2 = nn.Linear(d_ff,d_model)
-        self.relu = nn.ReLU()
+        self.gelu = nn.GELU()
     
     def forward(self,x):
-        return self.fc2(self.relu(self.fc1(x)))
+        return self.fc2(self.gelu(self.fc1(x)))
     
 #Positional Encoding
 class PositionalEncoding(nn.Module):

@@ -116,7 +116,7 @@ class Evaluation_metric:
     #Save Leaderboard Metric
     def save_leaderboard_metric(self, eer_value, test_acc, roc_value):
         #Define json path and model name variable
-        json_path = "leaderboard.json"
+        json_path = "leaderboard_PreFineTuning.json"
         model_name = self.model_name
 
         #Read existing JSON database if it exist
@@ -245,7 +245,7 @@ class Evaluation_metric:
 
     #Plot Speed vs Accuracy graph
     def Plot_Speed_Accuracy(self,
-                            json_path = "leaderboard.json"):
+                            json_path = "leaderboard_AfterFineTuned.json"):
         
         #Check if the file exist or not
         if not os.path.exists(json_path):
@@ -301,7 +301,7 @@ class Evaluation_metric:
         
         
         plt.tight_layout()
-        save_path = r'D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Graph\Speed_Vs_Accuracy_Frontier.svg'
+        save_path = r'D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Graph\Speed_Vs_Accuracy_Frontier_AfterFineTuned.svg'
         plt.savefig(
             save_path, 
             dpi=300, 
@@ -360,7 +360,7 @@ class Evaluation_metric:
     
     def forward(self):
         #Call the evaluate function and pass the evaluation/test dataloader
-        test_loss, self.test_acc, test_f1, test_recall, test_preds, test_labels, test_probs = self.trainer.evalModel(train_test_val="test")
+        test_loss, self.test_acc, test_f1, test_recall, test_preds, test_labels, test_probs,_ = self.trainer.evalModel(train_test_val="test")
         print(f"Raw Default Accuracy: {self.test_acc:.4f}")
 
         #Plot Graph to visualize Train loss, acc and val loss, acc

@@ -16,7 +16,7 @@ class ResultLeaderboard:
         os.makedirs(self.classification_dir, exist_ok=True)
 
         #Define paths for summary tables and detailed metrics
-        self.csv_path = os.path.join(self.leaderboard_dir, "Leaderboard.csv")
+        self.csv_path = os.path.join(self.leaderboard_dir, "Leaderboard_AfterFineTuned.csv")
         self.json_path = os.path.join(self.classification_dir, f"{model_name}_Confusion&Classification_Report.json")
 
 

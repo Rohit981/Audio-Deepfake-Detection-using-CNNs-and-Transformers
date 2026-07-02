@@ -25,7 +25,8 @@ class WindowAttention(nn.Module):
     def __init__(self,
                  d_model,
                  n_heads,
-                 win):
+                 win,
+                 dropout_rate=0.3):
         super().__init__()
 
         self.d_model = d_model
@@ -39,8 +40,12 @@ class WindowAttention(nn.Module):
         self.K = nn.Linear(d_model, d_model)
         self.V = nn.Linear(d_model, d_model)
 
+        self.attn_dropout = nn.Dropout(dropout_rate)
+
         #Projection layer
         self.proj = nn.Linear(d_model,d_model)
+
+        self.proj_drop = nn.Dropout(dropout_rate)
 
         #Relative Position bias this creates a table for Q and K indices
         coords = torch.stack(torch.meshgrid(torch.arange(win), torch.arange(win), 
@@ -82,8 +87,10 @@ class WindowAttention(nn.Module):
             attn = attn.view(-1, self.n_heads, N,N)
         
         attn = torch.softmax(attn,dim=-1)
+        attn = self.attn_dropout(attn)
         out = (attn @ v).transpose(1,2).reshape(B_,N,C)
         out = self.proj(out)
+        out = self.proj_drop(out)
         return out
     
 class SwinBlock(nn.Module):
@@ -93,7 +100,8 @@ class SwinBlock(nn.Module):
                  win,
                  shift,
                  n_heads,
-                 diff):
+                 diff,
+                 dropout_rate=0.6):
         super().__init__()
 
         self.d_model = d_model
@@ -102,13 +110,14 @@ class SwinBlock(nn.Module):
         self.shift = shift
 
         self.norm1 = nn.LayerNorm(d_model)
-        self.attn = WindowAttention(d_model,n_heads,win)
+        self.attn = WindowAttention(d_model,n_heads,win,dropout_rate=dropout_rate/2)
 
         self.norm2 = nn.LayerNorm(d_model)
         self.mlp = nn.Sequential(
             nn.Linear(d_model,diff),
             nn.GELU(),
-            nn.Linear(diff,d_model)
+            nn.Linear(diff,d_model),
+            nn.Dropout(dropout_rate)
         )
 
         H,W = res
@@ -193,7 +202,8 @@ class PatchMerging(nn.Module):
 #2 stage Swin Transformer
 class Swin(nn.Module):
     def __init__(self,
-                 config:AudioConfig):
+                 config:AudioConfig, 
+                 dropout_rate=0.5):
         super().__init__()
         self.architecture_name = "SwinTransformer"
         self.d_model = config.d_model
@@ -245,6 +255,7 @@ class Swin(nn.Module):
             )
        
         self.norm = nn.LayerNorm(merged_dim)
+        self.fc_drop = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(merged_dim, config.num_classes)
     
     def forward(self,x):
@@ -268,6 +279,8 @@ class Swin(nn.Module):
         #Classification layer
         x = self.norm(x)
         x = x.mean(1) #Global average Pooling
+
+        x = self.fc_drop(x) #Apply structural dropout before final projection classification
         x = self.fc(x)
 
         return x

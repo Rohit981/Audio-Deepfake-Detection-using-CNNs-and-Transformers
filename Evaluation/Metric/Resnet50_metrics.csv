@@ -493,3 +493,87 @@ Test EER (%): 0.90%
 Optimal Threshold: 0.002594
 Batch Size: 128
 Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet50
+Epochs: 500
+Training Time: 463.40 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.8695
+Test ROC-AUC: 0.9392
+Test EER (%): 13.05%
+Optimal Threshold: 0.411430
+Batch Size: 128
+Learning Rate: 2e-05
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet50
+Epochs: 500
+Training Time: 796.57 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.8682
+Test ROC-AUC: 0.9396
+Test EER (%): 13.17%
+Optimal Threshold: 0.500513
+Batch Size: 128
+Learning Rate: 2e-05
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet50
+Epochs: 500
+Training Time: 594.64 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.8672
+Test ROC-AUC: 0.9394
+Test EER (%): 13.28%
+Optimal Threshold: 0.458444
+Batch Size: 128
+Learning Rate: 2e-05
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet50
+Epochs: 500
+Training Time: 446.81 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.8673
+Test ROC-AUC: 0.9428
+Test EER (%): 13.28%
+Optimal Threshold: 0.487366
+Batch Size: 128
+Learning Rate: 2e-05
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet50
+Epochs: 500
+Training Time: 388.43 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.8681
+Test ROC-AUC: 0.9437
+Test EER (%): 13.19%
+Optimal Threshold: 0.401344
+Batch Size: 128
+Learning Rate: 2e-05
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet50
+Epochs: 500
+Training Time: 1438.89 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.8947
+Test ROC-AUC: 0.9653
+Test EER (%): 10.52%
+Optimal Threshold: 0.001265
+Batch Size: 128
+Learning Rate: 2e-05

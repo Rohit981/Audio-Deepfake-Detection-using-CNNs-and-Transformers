@@ -101,8 +101,8 @@ class ModelTrainer(nn.Module):
 
     
         #Intialize Augmentation class for X data
-        self.augmentation = Augmentation(frequency_mask_param=50,
-                                         time_mask_param=30,
+        self.augmentation = Augmentation(frequency_mask_param=25,
+                                         time_mask_param=15,
                                          noise_prob=0.4)
 
     #Load Resnet50 Model as teacher model
@@ -124,12 +124,7 @@ class ModelTrainer(nn.Module):
         return teacher_resnet
 
     #Set optimizer
-    def set_optimizer(self):
-        # if self.model_name == "CNNTRANSFORMER":
-        #     self.learning_rate = 1e-4
-        # else:
-        #     self.learning_rate = 1e-5
-            
+    def set_optimizer(self):     
         self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate,weight_decay=1e-2)
         
     
@@ -151,12 +146,12 @@ class ModelTrainer(nn.Module):
             return 50.0
 
         fpr, tpr, thresholds  = roc_curve(labels,probabilities,pos_label=1)
-        fnr = 1-fpr
+        fnr = 1-tpr
 
         #Find the thresholds where FPR and FNR are closest
         idx = np.nanargmin(np.absolute(fpr-fnr))
-        eer = fpr[idx] * 100
-        return eer
+        eer = (fpr[idx] + fnr[idx]) / 2
+        return eer*100
     
     
     #Checkpoint Check
@@ -216,7 +211,7 @@ class ModelTrainer(nn.Module):
                     self.start_epoch = checkpoint['epoch'] + 1
                     # Manually anchor your target baseline EER to beat!
                     self.best_val_eer = checkpoint['best_val_eer']
-                    # self.best_val_eer = 9.42
+                    # self.best_val_eer = 7.15
 
             print("Checkpoint Loaded starting from epoch:", self.start_epoch)
         else:
@@ -372,8 +367,8 @@ class ModelTrainer(nn.Module):
                     fx = (logits_cls+logits_distil)/2
                 else:   
                     #Forward pass
-                    fx = self.model(X).squeeze(1) if len(self.model(X).shape) > 1 else self.model(X)
-
+                    fx = self.model(X)
+                    # .squeeze(1) if len(self.model(X).shape) > 1 else self.model(X)
                 # Ensure fx is squeezed down to [Batch] if a standard model returns [Batch, 1]
                 if len(fx.shape) > 1:
                     fx = fx.squeeze(-1)
@@ -398,6 +393,13 @@ class ModelTrainer(nn.Module):
                 #Calculate probs for ROC Curve and auc score
                 all_probs.extend(probs_flat.cpu().numpy())
 
+        # # print("Logits:", logits[:20])
+        # print("Probs:", probs[:20])
+        # print("Preds:", (probs > 0.5).float()[:20])
+        # print("Labels:", Y[:20])
+        # print("Prob min:", probs.min().item())
+        # print("Prob max:", probs.max().item())
+        # print("Prob mean:", probs.mean().item())
         
         epoc_acc = correct_pred/sample
         epoch_loss /=len(loader)
@@ -425,6 +427,42 @@ class ModelTrainer(nn.Module):
         
         return epoch_loss,epoc_acc,f1,recall,all_preds,all_labels,all_probs, val_eer
     
+    # def debug_swin(self):
+    #     self.model.eval()
+
+    #     X, Y = next(iter(self.val_loader))
+    #     X = X.to(self.device)
+
+    #     with torch.inference_mode():
+    #         x = self.model.patch_embed(X)
+    #         print("Patch embed std:", x.std().item())
+
+    #         B, C, H, W = x.shape
+
+    #         x = x.flatten(2).transpose(1, 2)
+    #         print("Flatten std:", x.std().item())
+
+    #         x = self.model.stage1_block(x)
+    #         print("Stage 1 std:", x.std().item())
+
+    #         x = self.model.patch_merge(x, H, W)
+    #         print("Patch merge std:", x.std().item())
+
+    #         H, W = H // 2, W // 2
+
+    #         x = self.model.stage2_block(x)
+    #         print("Stage 2 std:", x.std().item())
+
+    #         x = self.model.norm(x)
+    #         print("Norm std:", x.std().item())
+
+    #         x = x.mean(1)
+    #         print("Pooling std:", x.std().item())
+
+    #         x = self.model.fc(x)
+    #         print("Logit std:", x.std().item())
+    #         print("Logits:", x[:20].squeeze())
+        
     #Run through epochs, train and evaluate the model
     def RunEpochs(self,
                   train_dataset, 
@@ -455,6 +493,8 @@ class ModelTrainer(nn.Module):
             #Calculate evaluation
             _, train_acc,_,_, _, _, _,_= self.evalModel(train_test_val="train")
             val_loss, val_acc,val_f1,val_recall, _, _, _, current_val_eer = self.evalModel(train_test_val="val")
+
+            # self.debug_swin()
 
             train_loss = self.train_loss[-1]
 

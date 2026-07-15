@@ -101,7 +101,7 @@ class SwinBlock(nn.Module):
                  shift,
                  n_heads,
                  diff,
-                 dropout_rate=0.1):
+                 dropout_rate=0.2):
         super().__init__()
 
         self.d_model = d_model
@@ -257,9 +257,12 @@ class Swin(nn.Module):
         self.norm = nn.LayerNorm(merged_dim)
         self.fc_drop = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(merged_dim, config.num_classes)
-    
+
     def forward(self,x):
+    
         x = self.patch_embed(x)
+
+
         B,C,H,W = x.shape
         x = x.flatten(2).transpose(1,2)
         #Number of tokens
@@ -267,19 +270,20 @@ class Swin(nn.Module):
 
         #Stage 1 transformer
         x = self.stage1_block(x)
-
+       
         #Patch merging
         x = self.patch_merge(x,H,W)
+      
         H,W = H//2, W//2
         
-
         #Stage 2 transformer
         x = self.stage2_block(x)
 
         #Classification layer
         x = self.norm(x)
+       
         x = x.mean(1) #Global average Pooling
-
+       
         x = self.fc_drop(x) #Apply structural dropout before final projection classification
         x = self.fc(x)
 

@@ -126,6 +126,22 @@ Phase III
 - Gradient Clipping
 - EER-based checkpoint selection
 
+## 📊 Results
+
+The final models were evaluated on the **ASVspoof2019 Logical Access (LA) evaluation set** using **Test Accuracy**, **ROC-AUC**, and **Equal Error Rate (EER)**. Lower EER indicates better spoof detection performance.
+
+| Rank | Model | Test Accuracy | ROC-AUC | EER ↓ |
+|:---:|:------------------|:------------:|:-------:|:------:|
+| 🥇 | **Swin Transformer** | **92.85%** | 0.9767 | **7.14%** |
+| 🥈 | **ResNet50** | **92.85%** | **0.9797** | 7.15% |
+| 🥉 | **ResNet18** | 92.34% | **0.9825** | 7.65% |
+| 4 | **CNN-Transformer** | 92.11% | 0.9800 | 7.89% |
+| 5 | **Vision Transformer (ViT)** | 91.67% | 0.9689 | 8.32% |
+| 6 | **DeiT-Hard** | 90.04% | 0.9620 | 9.97% |
+| 7 | **DeiT-Soft** | 89.25% | 0.9535 | 10.75% |
+
+> **Note:** Results correspond to the **best coherent evaluation checkpoints** obtained after architecture-specific fine-tuning. Model selection was based on agreement between **Equal Error Rate (EER)**, **ROC-AUC**, **classification accuracy**, and additional diagnostic analyses to avoid misleading results caused by optimization instability.
+
 ## Key Findings
 
 - Swin Transformer achieved the lowest observed EER after architecture correction.

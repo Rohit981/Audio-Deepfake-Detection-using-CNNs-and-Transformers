@@ -6,12 +6,65 @@ import torch.utils.data.dataloader as dataloader
 from tqdm import tqdm,trange
 from sklearn.metrics import f1_score, recall_score
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from data import Augmentation
+from DataSets import ASVspoof2019
 import time
 from Resnet50 import CustomResnet50
 import torch.nn.functional as F
 from sklearn.metrics import roc_curve
 import numpy as np
+
+#Temperory Debug function
+def calculate_sample_variation(tensor):
+    """
+    Compares every sample against the first sample.
+    Returns mean and maximum absolute differences.
+    """
+
+    difference = tensor[1:] - tensor[0]
+
+    reduce_dims = tuple(range(1, tensor.ndim))
+
+    variations  = difference.abs().mean(dim=reduce_dims)
+
+    return {
+        "mean": variations.mean().item(),
+        "min": variations.min().item(),
+        "max": variations.max().item()
+    }
+
+# def create_swin_optimizer(model, learning_rate=1e-4):
+#     decay_params = []
+#     no_decay_params = []
+
+#     for name, param in model.named_parameters():
+#         if not param.requires_grad:
+#             continue
+
+#         if (
+#             param.ndim == 1
+#             or name.endswith(".bias")
+#             or "norm" in name.lower()
+#         ):
+#             no_decay_params.append(param)
+#         else:
+#             decay_params.append(param)
+
+#     optimizer = torch.optim.AdamW(
+#         [
+#             {
+#                 "params": decay_params,
+#                 "weight_decay": 1e-4
+#             },
+#             {
+#                 "params": no_decay_params,
+#                 "weight_decay": 0.0
+#             }
+#         ],
+#         lr=learning_rate,
+#         betas=(0.9, 0.999)
+#     )
+
+#     return optimizer
 
 class ModelTrainer(nn.Module):
     def __init__(self, 
@@ -61,6 +114,9 @@ class ModelTrainer(nn.Module):
         #Intialize best val eer as infinity
         self.best_val_eer = float('inf')
 
+        #Print logits during inference mode bool
+        self.bool_logits = True
+
         #Extract model name
         base_name = getattr(model,'architecture_name',model.__class__.__name__)
 
@@ -101,10 +157,44 @@ class ModelTrainer(nn.Module):
 
     
         #Intialize Augmentation class for X data
-        self.augmentation = Augmentation(frequency_mask_param=25,
-                                         time_mask_param=15,
-                                         noise_prob=0.4)
+        self.augmentation = ASVspoof2019.Augmentation(frequency_mask_param=15,
+                                         time_mask_param=10,
+                                         noise_prob=0.2)
 
+    #Monitor Swin transformer attention values
+    def monitor_swin_attention(self):
+
+        self.model.eval()
+
+        attention = self.model.stage2_block[0].attn
+
+        print("\n===== SWIN ATTENTION MONITOR =====")
+
+        with torch.no_grad():
+
+          for name in ["Q", "K", "V", "proj"]:
+                layer = getattr(attention, name)
+
+                weight = layer.weight.detach()
+
+                print(
+                    f"{name:10s} | "
+                    f"weight_shape={tuple(weight.shape)} | "
+                    f"weight_mean={weight.mean().item():.6e} | "
+                    f"weight_std={weight.std().item():.6e} | "
+                    f"weight_abs_max={weight.abs().max().item():.6e}"
+                )
+
+                if layer.bias is not None:
+
+                    bias = layer.bias.detach()
+
+                    print(
+                        f"{name:10s} | "
+                        f"bias_mean={bias.mean().item():.6e} | "
+                        f"bias_std={bias.std().item():.6e} | "
+                        f"bias_abs_max={bias.abs().max().item():.6e}"
+                    )
     #Load Resnet50 Model as teacher model
     def LoadResnetModel(self):
         #Load the custom Resnet 50 model
@@ -125,7 +215,7 @@ class ModelTrainer(nn.Module):
 
     #Set optimizer
     def set_optimizer(self):     
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate,weight_decay=1e-2)
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate)
         
     
     #Set data loader for test and train
@@ -188,7 +278,53 @@ class ModelTrainer(nn.Module):
 
             #Checkpoint is stored as python dictionary
             #Here we unpack the dictionary to get our previous training states
-            self.model.load_state_dict(checkpoint['model_state_dict'])
+            state_dict = checkpoint['model_state_dict']
+            load_result = self.model.load_state_dict(checkpoint['model_state_dict'])
+
+            print("\n========== CHECKPOINT VALIDATION ==========")
+
+            print("Missing keys:", load_result.missing_keys)
+            print("Unexpected keys:", load_result.unexpected_keys)
+
+            assert len(load_result.missing_keys) == 0, (
+                f"Missing checkpoint keys: {load_result.missing_keys}"
+            )
+
+            assert len(load_result.unexpected_keys) == 0, (
+                f"Unexpected checkpoint keys: {load_result.unexpected_keys}"
+            )
+
+            print("Loaded Checkpoint:", self.save_path)
+            print('Best Val acc:', checkpoint.get('best_valid_acc'))
+            print('Epoch:', checkpoint.get('epoch'))
+
+
+            # Make sure the checkpoint is loaded before inspecting
+            print("\n========== LOADED SWIN CLASSIFIER HEAD ==========")
+
+            print("FC layer:")
+            print(self.model.fc)
+
+            fc_weight = self.model.fc.weight.detach().cpu()
+            fc_bias = self.model.fc.bias.detach().cpu()
+
+            print("\nFC weight shape:")
+            print(fc_weight.shape)
+
+            print("\nFC weight statistics:")
+            print("Mean:", fc_weight.mean().item())
+            print("Std :", fc_weight.std().item())
+            print("Min :", fc_weight.min().item())
+            print("Max :", fc_weight.max().item())
+
+            print("\nFC bias:")
+            print(fc_bias)
+
+            print("\nCheckpoint classifier keys:")
+            print([
+                key for key in state_dict.keys()
+                if key.startswith("fc.")
+            ])
 
             self.best_valid_acc = checkpoint['best_valid_acc']
 
@@ -211,11 +347,14 @@ class ModelTrainer(nn.Module):
                     self.start_epoch = checkpoint['epoch'] + 1
                     # Manually anchor your target baseline EER to beat!
                     self.best_val_eer = checkpoint['best_val_eer']
+                    print(self.best_val_eer)
                     # self.best_val_eer = 7.15
 
             print("Checkpoint Loaded starting from epoch:", self.start_epoch)
         else:
             raise ValueError("Chekpoint Doesn't exist")
+
+        
     
     #Save Checkpoint
     def save_checkpoint(self, epoch, valid_acc):
@@ -360,7 +499,7 @@ class ModelTrainer(nn.Module):
         with torch.inference_mode():
             for i, (X,Y) in enumerate(tqdm(loader,leave=False, desc=state)):
                 #Set X, Y to device
-                X,Y = X.to(self.device), Y.to(self.device)
+                X,Y = X.to(self.device, non_blocking=True), Y.to(self.device, non_blocking=True)
 
                 if self.teacher_present == True:
                     logits_cls, logits_distil = self.model(X)
@@ -368,10 +507,131 @@ class ModelTrainer(nn.Module):
                 else:   
                     #Forward pass
                     fx = self.model(X)
+                    features = self.model.forward_features(X)
                     # .squeeze(1) if len(self.model(X).shape) > 1 else self.model(X)
                 # Ensure fx is squeezed down to [Batch] if a standard model returns [Batch, 1]
                 if len(fx.shape) > 1:
                     fx = fx.squeeze(-1)
+                
+
+                # if self.bool_logits == True:
+                #     # print("\n========== SWIN LOGIT DIAGNOSTIC ==========")
+                #     # print("Input shape:", X.shape)
+                #     # print("Logits shape:", fx.shape)
+
+                #     # print("Logits mean:", fx.mean().item())
+                #     # print("Logits std :", fx.std().item())
+                #     # print("Logits min :", fx.min().item())
+                #     # print("Logits max :", fx.max().item())
+
+                #     # print("\nFirst 20 logits:")
+                #     # print(fx.flatten()[:20].detach().cpu())
+
+                #     # # Compare samples against the first sample
+                #     # input_difference = (X[1:] - X[0]).abs().mean(dim=(1, 2, 3))
+
+                #     # print("Mean difference from first sample:")
+                #     # print("Mean:", input_difference.mean().item())
+                #     # print("Std :", input_difference.std().item())
+                #     # print("Min :", input_difference.min().item())
+                #     # print("Max :", input_difference.max().item())
+
+                #     # print("\n========== SWIN Forward Feature DIAGNOSTIC ==========")
+                #     # print("Feature shape:", features.shape)
+
+                #     # print("Feature mean:", features.mean().item())
+                #     # print("Feature std :", features.std().item())
+                #     # print("Feature min :", features.min().item())
+                #     # print("Feature max :", features.max().item())
+
+                #     # print("\nPer-sample feature variation:")
+                #     # sample_feature_std = features.std(dim=0)
+
+                #     # print("Mean feature dimension std:", sample_feature_std.mean().item())
+                #     # print("Max feature dimension std :", sample_feature_std.max().item())
+                #     # print("Min feature dimension std :", sample_feature_std.min().item())
+
+                #     # print("\nFirst five feature vectors:")
+                #     # print(features[:5])
+
+                #     # outputs = self.model.forward_debug(X)
+
+                #     # print("\n========== SWIN STAGE VARIATION ==========")
+
+                #     # for name, value in outputs.items():
+                #     #     print(
+                #     #         f"{name:15s} | "
+                #     #         f"shape={tuple(value.shape)} | "
+                #     #         f"mean={value.mean().item():.8f} | "
+                #     #         f"std={value.std().item():.8e} | "
+                #     #         f"min={value.min().item():.8f} | "
+                #     #         f"max={value.max().item():.8f}"
+                #     #     )
+
+                #     #     variation = calculate_sample_variation(value)
+
+                #     #     print("\n========== SWIN VARIATION BY STAGE ==========")
+                #     #     print(
+                #     #         f"{name:15s} | "
+                #     #         f"mean difference={variation['mean']:.8e} | "
+                #     #         f"max difference={variation['max']:.8e} | "
+                #     #         f"min difference={variation['min']:.8e}"
+                #     #     )
+
+                #     # print("\n========== STAGE 2 BLOCK DIAGNOSTIC ==========")
+
+                #     # for name in [
+                #     #     "patch_merge",
+                #     #     "stage2 Block 1",
+                #     #     "stage2 Block 2"
+                #     # ]:
+                #     #     tensor = outputs[name]
+
+                #     #     variation = calculate_sample_variation(tensor)
+
+                #     #     print(
+                #     #         f"{name:20s} | "
+                #     #         f"shape={tuple(tensor.shape)} | "
+                #     #         f"mean={tensor.mean().item():.8e} | "
+                #     #         f"std={tensor.std().item():.8e} | "
+                #     #         f"min={tensor.min().item():.8e} | "
+                #     #         f"max={tensor.max().item():.8e} | "
+                #     #         f"sample_mean_diff={variation['mean']:.8e} | "
+                #     #         f"sample_max_diff={variation['max']:.8e}"
+                #     #     )
+                #     block = self.model.stage2_block[0]
+
+                #     attention = block.attn
+
+                #     print("\n========== STAGE 2 BLOCK 1 ATTENTION WEIGHTS ==========")
+
+                #     for name in ["Q", "K", "V", "proj"]:
+
+                #         layer = getattr(attention, name)
+
+                #         weight = layer.weight.detach()
+
+                #         print(
+                #             f"{name:10s} | "
+                #             f"weight_shape={tuple(weight.shape)} | "
+                #             f"weight_mean={weight.mean().item():.6e} | "
+                #             f"weight_std={weight.std().item():.6e} | "
+                #             f"weight_abs_max={weight.abs().max().item():.6e}"
+                #         )
+
+                #         if layer.bias is not None:
+
+                #             bias = layer.bias.detach()
+
+                #             print(
+                #                 f"{name:10s} | "
+                #                 f"bias_mean={bias.mean().item():.6e} | "
+                #                 f"bias_std={bias.std().item():.6e} | "
+                #                 f"bias_abs_max={bias.abs().max().item():.6e}"
+                #             )
+
+
+                # self.bool_logits = False
 
                 #Loss
                 loss = self.loss_fn(fx, Y)
@@ -481,15 +741,11 @@ class ModelTrainer(nn.Module):
         #Initializing early stopping variables
         patience = 10 #Stop training if val_loss doesn't improve for 15 epochs straight
         patience_counter = 0
-        best_val_loss = float('inf')
+        # best_val_loss = float('inf')
 
         for epoch in pbar:
             self.TrainingLoop()
 
-            # Step the scheduler!
-            if hasattr(self, 'scheduler') and self.scheduler is not None:
-                self.scheduler.step()
-            
             #Calculate evaluation
             _, train_acc,_,_, _, _, _,_= self.evalModel(train_test_val="train")
             val_loss, val_acc,val_f1,val_recall, _, _, _, current_val_eer = self.evalModel(train_test_val="val")
@@ -506,7 +762,7 @@ class ModelTrainer(nn.Module):
                 f"Recall score: {val_recall:.4f}")
 
             #Early Stopping to halt model training before overfitting
-            current_val_loss = val_loss 
+            # current_val_loss = val_loss 
 
             if val_acc > self.best_valid_acc:
                 self.best_valid_acc = val_acc
@@ -514,6 +770,13 @@ class ModelTrainer(nn.Module):
             # if current_val_eer < self.best_val_eer:
             #     self.best_val_eer = current_val_eer
             #     self.save_checkpoint(epoch,val_acc)
+
+            # Step the scheduler!
+            if hasattr(self, 'scheduler') and self.scheduler is not None:
+                self.scheduler.step()
+
+            if(epoch + 1) % 2 == 0:
+                self.monitor_swin_attention()
                
 
             #Check for improvement

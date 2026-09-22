@@ -687,3 +687,45 @@ Test EER (%): 14.71%
 Optimal Threshold: 0.111166
 Batch Size: 64
 Learning Rate: 2e-05
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet18
+Epochs: 500
+Training Time: 344.58 seconds
+Highest Val Acc: 0.9997
+Default Test Acc: 0.7142
+Test ROC-AUC: 0.7745
+Test EER (%): 28.58%
+Optimal Threshold: 0.929797
+Batch Size: 128
+Learning Rate: 2e-05
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet18
+Epochs: 500
+Training Time: 347.39 seconds
+Highest Val Acc: 0.9997
+Default Test Acc: 0.7113
+Test ROC-AUC: 0.7651
+Test EER (%): 28.85%
+Optimal Threshold: 0.948466
+Batch Size: 512
+Learning Rate: 2e-05
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet18
+Epochs: 500
+Training Time: 119.58 seconds
+Highest Val Acc: 0.9997
+Default Test Acc: 0.7211
+Test ROC-AUC: 0.7788
+Test EER (%): 27.89%
+Optimal Threshold: 0.868203
+Batch Size: 512
+Learning Rate: 2e-05

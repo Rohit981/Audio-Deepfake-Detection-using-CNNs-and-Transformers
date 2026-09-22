@@ -110,8 +110,8 @@ class Evaluation_metric:
         self.log_model_metric(self.metric_save_dir,metrics)
 
         #Plot Accuracy vs Speed graph
-        json_path = self.save_leaderboard_metric(eer_value, test_acc,roc_score)
-        self.Plot_Speed_Accuracy(json_path)
+        # json_path = self.save_leaderboard_metric(eer_value, test_acc,roc_score)
+        # self.Plot_Speed_Accuracy(json_path)
     
     #Save Leaderboard Metric
     def save_leaderboard_metric(self, eer_value, test_acc, roc_value):
@@ -318,14 +318,14 @@ class Evaluation_metric:
         fpr, tpr, thresholds = roc_curve(y_true,y_probs,pos_label=1)
         fnr = 1 - tpr
 
+        #Locate the intersection point where FPR ~= FNR
+        idx = np.nanargmin(np.absolute(fpr - fnr))
+        eer = (fpr[idx] + fnr[idx]) / 2
+        self.optimal_threshold = thresholds[idx]
+
         #Calculate ROC AUC Score
         auc_score = roc_auc_score(y_true,y_probs)
         print(f"ROC AUC Score:{auc_score:.4f}")
-
-        #Locate the intersection point where FPR ~= FNR
-        idx = np.nanargmin(np.absolute(fpr - fnr))
-        eer = fpr[idx]
-        self.optimal_threshold = thresholds[idx]
 
         print("\n" + "="*40)
         print(f" Equal Error Rate (EER): {eer * 100:.2f}%")
@@ -363,6 +363,32 @@ class Evaluation_metric:
         #Call the evaluate function and pass the evaluation/test dataloader
         test_loss, self.test_acc, test_f1, test_recall, test_preds, test_labels, test_probs,_ = self.trainer.evalModel(train_test_val="test")
         print(f"Raw Default Accuracy: {self.test_acc:.4f}")
+
+        print("2019 probability statistics")
+        print("min :", np.min(test_probs))
+        print("max :", np.max(test_probs))
+        print("mean:", np.mean(test_probs))
+        print("std :", np.std(test_probs))
+
+        # print("Probability statistics:")
+       
+
+        print("\nPercentiles:")
+        print(np.percentile(
+            test_probs,
+            [0, 1, 5, 25, 50, 75, 95, 99, 100]
+        ))
+
+        test_probs_np = np.array(test_probs)
+        test_labels_np = np.array(test_labels)
+
+        print("\nBonafide probability statistics:")
+        print(test_probs_np[test_labels_np == 0].mean())
+        print(test_probs_np[test_labels_np == 0].std())
+
+        print("\nSpoof probability statistics:")
+        print(test_probs_np[test_labels_np == 1].mean())
+        print(test_probs_np[test_labels_np == 1].std())
 
         #Plot Graph to visualize Train loss, acc and val loss, acc
         self.Visualize_loss_acc(self.trainer.train_loss,

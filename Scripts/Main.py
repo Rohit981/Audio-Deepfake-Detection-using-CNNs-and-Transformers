@@ -1,4 +1,4 @@
-import data
+from DataSets import ASVspoof2019,ASVspoof2021DF
 import os
 from Resnet50 import CustomResnet50
 from Trainer import Trainer, Optimizer
@@ -7,7 +7,6 @@ from Transformer import CnnTrasnformer,VisionTransformer,SwinTransformer, DEIT
 import evaluation
 from config import AudioConfig
 from Utils.Leaderboard import ResultLeaderboard
-import torch
 
 
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
@@ -21,9 +20,18 @@ def main():
     config.set_seed(123)
 
     #Instantiate Datasets
-    train_dataset = data.ASVpoofDataset(part="train", precompute=False)
-    val_dataset = data.ASVpoofDataset(part="dev", precompute=False)
-    test_dataset = data.ASVpoofDataset(part="eval",precompute=False)
+    train_dataset = ASVspoof2019.ASVpoof2019Dataset(part="train", precompute=False)
+    val_dataset = ASVspoof2019.ASVpoof2019Dataset(part="dev", precompute=False)
+    test_dataset = ASVspoof2019.ASVpoof2019Dataset(part="eval",precompute=False)
+
+    #Test ASVspoof2021DF test dataset
+    ASVspoof2021_test_dataset = ASVspoof2021DF.ASVspoof2021DFDataset(
+        base_dir=config.ASVspoof2021_test_dir,
+        sr=16000,
+        n_mels=128,
+        precompute=False,
+        ram_cache=False
+    )
 
     # #Create a sampler for data balance
     sampler = train_dataset.data_balancing(train_dataset)
@@ -47,7 +55,7 @@ def main():
     deit = DEIT.DEIT(config)
 
     #Track of active model
-    active_model = Resnet_50    
+    active_model = swin    
 
     #Initialize Trainer and run the epochs
     trainer = Trainer.ModelTrainer(model=active_model, 

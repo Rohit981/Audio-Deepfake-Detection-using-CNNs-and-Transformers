@@ -7,13 +7,13 @@ if TYPE_CHECKING:
     from Trainer import ModelTrainer
 
 
-def get_swin_optimizer(model, base_lr = 1e-5, decay_rate=0.5):
+def get_swin_optimizer(model, base_lr = 5e-5, decay_rate=0.5):
     parameters_group = []
 
     #Patch embedding and early stages
     parameters_group.append({
         "params" : model.patch_embed.parameters(),
-        "lr" : base_lr * (decay_rate ** 2) # 4e-6
+        "lr" : base_lr * (decay_rate ** 2) # 1.25e-5
     })
 
    #Gathering parameters from stage1, patch_merge, stage2 and pre-head normalization
@@ -35,7 +35,7 @@ def get_swin_optimizer(model, base_lr = 1e-5, decay_rate=0.5):
         "lr": base_lr # e.g., 1e-5
     })
     
-    optimizer = torch.optim.AdamW(parameters_group, weight_decay=0.08)
+    optimizer = torch.optim.AdamW(parameters_group, weight_decay=0.05)
     return optimizer
 
 def get_vit_or_deit_optimizer(model, base_lr=2e-5, decay_rate=0.5):
@@ -65,7 +65,7 @@ def get_vit_or_deit_optimizer(model, base_lr=2e-5, decay_rate=0.5):
     
     return torch.optim.AdamW(parameters_group, weight_decay=0.08)
 
-def get_generic_finetune_optimizer(model, base_lr=3e-3, decay_rate=0.5):
+def get_generic_finetune_optimizer(model, base_lr=1e-5, decay_rate=0.5):
     """
     Dynamically groups parameters into three tiers:
     Tier 1 (Lowest LR): Early feature extraction (CNN stems, patch embeddings)
@@ -119,7 +119,14 @@ def set_Optimizers(model_name,
     trainer.optimizer = fine_tune_optimizer
 
     #Warup Setup Configuration
-    warmup_epochs = getattr(config, 'warmup_epochs', 2)
+    warmup_epochs = getattr(config, 'warmup_epochs', 5)
+
+    total_epochs = config.n_epochs
+
+    if warmup_epochs >= total_epochs:
+        raise ValueError(
+            "warmup_epochs must be smaller than n_epochs"
+        )
 
     if warmup_epochs > 0:
         print(f"Setting up {warmup_epochs} Warmup Epochs followed by Cosine Annealing")

@@ -1,0 +1,6 @@
+            AUDIO DEEPFAKE ARCHITECTURE LEADERBOARD (RANKED BY BEST EER)             
+=====================================================================================
+Model Name           | Highest Val Acc | Test Acc   | Test ROC-AUC | Test EER (%)
+-------------------------------------------------------------------------------------
+Resnet18             | 0.9997          | 0.7211     | 0.7788       | 27.89%      
+SwinTransformer      | 0.9965          | 0.1110     | 0.5711       | 42.70%      

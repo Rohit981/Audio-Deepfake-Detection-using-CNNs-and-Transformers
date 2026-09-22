@@ -1,0 +1,42 @@
+{
+    "SwinTransformer_8_Heads": {
+        "timestamp": "2026-09-22 15:29:50",
+        "Classification Report": {
+            "bonafide": {
+                "precision": 0.5836338657049631,
+                "recall": 0.9241332426920462,
+                "f1-score": 0.7154360296826483,
+                "support": 7355.0
+            },
+            "spoof": {
+                "precision": 0.9906361698914266,
+                "recall": 0.9240944240944241,
+                "f1-score": 0.9562090497517676,
+                "support": 63882.0
+            },
+            "accuracy": 0.9240984319946095,
+            "macro avg": {
+                "precision": 0.7871350177981948,
+                "recall": 0.9241138333932352,
+                "f1-score": 0.8358225397172079,
+                "support": 71237.0
+            },
+            "weighted avg": {
+                "precision": 0.9486144403507183,
+                "recall": 0.9240984319946095,
+                "f1-score": 0.9313499798497732,
+                "support": 71237.0
+            }
+        },
+        "Confusion Matrix": [
+            [
+                6797,
+                4849
+            ],
+            [
+                558,
+                59033
+            ]
+        ]
+    }
+}

@@ -12,6 +12,7 @@ class AudioConfig:
      #----------------------Save Directory-------------------------------
      leaderBoard_savedir : str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Metric\LeaderBoard"
      classification_savedir : str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Metric\Confusion&Classification Report"
+     ASVspoof2021_test_dir: str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Datasets\asvspoof2021 DF"
 
      #----------------------LeaderBoard Metrics--------------------------
      highest_val_acc: float = None
@@ -27,14 +28,14 @@ class AudioConfig:
 
      #---------------------Core Architecture Parameters----------------------
      d_model : int = 128    #Baseline dimension of hidden state
-     n_heads : int = 4      #Number of heads used by transformer
+     n_heads : int = 8      #Number of heads used by transformer
      num_layers: int = 3    #Layer configration
      d_ff : int = d_model*4
      input_layer_channels : list = field(default_factory = lambda:[32,64,128])
 
      #--------------------Training and Optimization-------------------------
      batch_size: int = 128
-     learning_rate: float = 2e-5
+     learning_rate: float = 1e-4
      n_epochs : int = 500
      start_from_checkpoint : bool = True
      Temperature: float = 1.0 #Only use if distill is soft

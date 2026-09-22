@@ -5,6 +5,10 @@ from config import AudioConfig
 #Define window partition
 def window_partition(x,win):
     B,H,W,C = x.shape
+
+    assert H % win == 0, f"H={H} is not divisible by win={win}"
+    assert W % win == 0, f"W={W} is not divisible by win={win}"
+
     x = x.view(B,H//win, win, W//win, win,C)
     x = x.permute(0,1,3,2,4,5)
     x = x.reshape(-1,win,win,C)
@@ -20,6 +24,7 @@ def window_reverse(windows, win, H,W):
     x = x.reshape(B,H,W,-1)
     return x
 
+
 #Calculate window attention
 class WindowAttention(nn.Module):
     def __init__(self,
@@ -32,6 +37,8 @@ class WindowAttention(nn.Module):
         self.d_model = d_model
         self.n_heads = n_heads
         self.head_dim = self.d_model // self.n_heads
+
+      
         self.scale = self.head_dim**-0.5
         self.win = win
 
@@ -68,17 +75,41 @@ class WindowAttention(nn.Module):
 
         self.register_buffer("pos_index", index)
         self.rel_bias = nn.Parameter(torch.zeros((2*win-1) * (2*win - 1), n_heads))
+
+        #Debug Flag
+        self.debug_flag = True
     
     def forward(self,x, mask=None):
         B_,N,C = x.shape
+        
+
+        def inspect(name, tensor):
+            if self.debug_flag == True:
+                print(
+                    f"{name:25s} | "
+                    f"shape={tuple(tensor.shape)} | "
+                    f"mean={tensor.mean().item():.6e} | "
+                    f"std={tensor.std().item():.6e} | "
+                    f"min={tensor.min().item():.6e} | "
+                    f"max={tensor.max().item():.6e} | "
+                    f"abs_max={tensor.abs().max().item():.6e}"
+                )
+
         q = self.Q(x).reshape(B_, N, self.n_heads, self.head_dim).permute(0, 2, 1, 3)
         k = self.K(x).reshape(B_, N, self.n_heads, self.head_dim).permute(0, 2, 1, 3)
         v = self.V(x).reshape(B_, N, self.n_heads, self.head_dim).permute(0, 2, 1, 3)
 
+        inspect("Q reshaped", q)
+        inspect("K reshaped", k)
+        inspect("V reshaped", v)
+
         # q = q * self.scale
         attn = (q @ k.transpose(-2,-1)) * self.scale
+        inspect("attention scores", attn)
         rb = self.rel_bias[self.pos_index.view(-1)] .view(N,N,-1)
-        attn = attn + rb.permute(2,0,1).unsqueeze(0)
+        rb = rb.permute(2, 0, 1).unsqueeze(0)
+        inspect("relative bias", rb)
+        attn = attn + rb
 
         if mask is not None:
             nw = mask.shape[0]
@@ -87,10 +118,18 @@ class WindowAttention(nn.Module):
             attn = attn.view(-1, self.n_heads, N,N)
         
         attn = torch.softmax(attn,dim=-1)
+        inspect("attention probabilities", attn)
+
         attn = self.attn_dropout(attn)
         out = (attn @ v).transpose(1,2).reshape(B_,N,C)
+        inspect("before projection", out)
+
         out = self.proj(out)
+        inspect("after projection", out)
+        
         out = self.proj_drop(out)
+
+        self.debug_flag = False
         return out
     
 class SwinBlock(nn.Module):
@@ -140,7 +179,8 @@ class SwinBlock(nn.Module):
         mask = mask.unsqueeze(1) - mask.unsqueeze(2)
         mask = mask.masked_fill(mask!=0, -100000.0)
         return mask
-    
+
+
     def forward(self,x):
         #L is total number of tokens
         B,L,C = x.shape
@@ -149,7 +189,7 @@ class SwinBlock(nn.Module):
 
         residual = x
         x = self.norm1(x)
-        x = x.view(B,H,W,C)
+        x = x.reshape(B,H,W,C)
 
         #Cyclic Shifting
         if self.shift > 0:
@@ -163,7 +203,7 @@ class SwinBlock(nn.Module):
         if self.shift > 0:
             x = torch.roll(x, shifts=(+self.shift, +self.shift), dims=(1,2))
         
-        x = residual + x.view(B,L,C)
+        x = residual + x.reshape(B,L,C)
 
         residual2 = x
         x = self.norm2(x)
@@ -183,7 +223,21 @@ class PatchMerging(nn.Module):
 
     def forward(self, x, H,W):
         B,L,C = x.shape
-        x = x.view(B,H,W,C)
+
+        assert L == H * W, (
+        f"Expected L={H * W}, but received L={L}"
+        )
+
+        assert H % 2 == 0 and W % 2 == 0, (
+            f"Patch merging requires even H and W, got {H}, {W}"
+        )
+
+        assert C == self.d_model, (
+            f"Expected C={self.d_model}, but received C={C}"
+        )
+
+
+        x = x.reshape(B,H,W,C)
 
         #Extract four patches
         x0 = x[:,0::2,0::2,:].reshape(B,-1,C)
@@ -205,7 +259,7 @@ class Swin(nn.Module):
                  config:AudioConfig, 
                  dropout_rate=0.2):
         super().__init__()
-        self.architecture_name = "SwinTransformer"
+        self.architecture_name = "SwinTransformer_8_H"
         self.d_model = config.d_model
         win = 8
         self.patch_embed = nn.Conv2d(1,self.d_model, kernel_size=4,stride=4)
@@ -257,6 +311,69 @@ class Swin(nn.Module):
         self.norm = nn.LayerNorm(merged_dim)
         self.fc_drop = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(merged_dim, config.num_classes)
+
+    
+    def forward_features(self,x):
+        x = self.patch_embed(x)
+
+        B,C,H,W = x.shape
+        x = x.flatten(2).transpose(1,2)
+
+        #Stage 1
+        x = self.stage1_block(x)
+
+        #Patch merge
+        x = self.patch_merge(x,H,W)
+
+        # Update spatial resolution
+        H, W = H // 2, W // 2
+
+        #Stage 2
+        x = self.stage2_block(x)
+
+        #Final normalization and global average pooling
+        x = self.norm(x)
+        x = x.mean(dim=1)
+
+        return x
+
+    def forward_debug(self,x):
+        outputs={}
+
+        outputs['input'] = x.detach().clone()
+
+        x = self.patch_embed(x)
+        outputs['patch_embed'] = x.detach().clone()
+
+        B,C,H,W = x.shape
+        x = x.flatten(2).transpose(1,2)
+
+        x = self.stage1_block(x)
+        outputs['stage1 Block'] = x.detach().clone()
+
+        x = self.patch_merge(x, H, W)
+        outputs['patch_merge'] = x.detach().clone()
+
+        # Update spatial resolution
+        H, W = H // 2, W // 2
+
+        x = self.stage2_block[0](x)
+        outputs['stage2 Block 1'] = x.detach().clone()
+
+        x = self.stage2_block[1](x)
+        outputs['stage2 Block 2'] = x.detach().clone()
+
+        x = self.norm(x)
+        outputs["norm"] = x.detach().clone()
+
+        x = x.mean(dim=1)
+        outputs["pooled"] = x.detach().clone()
+
+        logits = self.fc(x)
+        outputs["logits"] = logits.detach().clone()
+
+        return outputs
+
 
     def forward(self,x):
     

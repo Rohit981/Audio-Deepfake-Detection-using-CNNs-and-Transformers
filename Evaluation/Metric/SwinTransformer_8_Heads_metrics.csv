@@ -1,0 +1,27 @@
+========================================
+INITIAL EVALUATION: SwinTransformer_8_Heads
+========================================
+Model Name: SwinTransformer_8_Heads
+Epochs: 100
+Training Time: 5573.00 seconds
+Highest Val Acc: 0.9987
+Default Test Acc: 0.9234
+Test ROC-AUC: 0.9742
+Test EER (%): 7.66%
+Optimal Threshold: 0.029687
+Batch Size: 32
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_8_Heads
+Epochs: 500
+Training Time: 1645.69 seconds
+Highest Val Acc: 0.9988
+Default Test Acc: 0.9241
+Test ROC-AUC: 0.9685
+Test EER (%): 7.59%
+Optimal Threshold: 0.007479
+Batch Size: 128
+Learning Rate: 0.0001

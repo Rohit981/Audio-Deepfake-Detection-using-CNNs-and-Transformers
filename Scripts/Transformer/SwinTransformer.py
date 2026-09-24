@@ -24,6 +24,42 @@ def window_reverse(windows, win, H,W):
     x = x.reshape(B,H,W,-1)
     return x
 
+#Stochastic Depth (Drop Path)
+def drop_path(x,
+              drop_prob = 0.0,
+              training = False,
+              scale_by_keep = True):
+
+
+    if drop_prob == 0.0 or not training:
+        return x
+    keep_prob = 1 - drop_prob
+
+    # Grab the batch size element directly as a scalar integer
+    batch_size = x.shape[0]
+    
+    # 1. Dynamically configure broadcast shapes for your (B, L, C) tensor
+    if x.ndim == 3:
+        shape = (batch_size, 1, 1)
+    elif x.ndim == 4:
+        shape = (batch_size, 1, 1, 1)
+    else:
+        shape = (batch_size,) + (1,) * (x.ndim - 1)
+        
+    random_tensor = torch.empty(shape, dtype=x.dtype, device=x.device).bernoulli_(keep_prob)
+
+    if keep_prob > 0.0 and scale_by_keep:
+        random_tensor.div(keep_prob)
+    return x * random_tensor
+
+class DropPath(nn.Module):
+    def __init__(self, drop_prob = 0.0):
+        super().__init__()
+        self.drop_prob = float(drop_prob) if drop_prob is not None else 0.0
+
+    def forward(self,x):
+        return drop_path(x,self.drop_prob,self.training)
+
 
 #Calculate window attention
 class WindowAttention(nn.Module):
@@ -114,7 +150,7 @@ class WindowAttention(nn.Module):
         if mask is not None:
             nw = mask.shape[0]
             attn = attn.view(B_//nw, nw, self.n_heads, N,N)
-            attn = attn + mask.unsqueeze(1).unsqueeze(0)
+            attn = attn + mask.unsqueeze(1).unsqueeze(0).detach()
             attn = attn.view(-1, self.n_heads, N,N)
         
         attn = torch.softmax(attn,dim=-1)
@@ -140,7 +176,8 @@ class SwinBlock(nn.Module):
                  shift,
                  n_heads,
                  diff,
-                 dropout_rate=0.2):
+                 dropout_rate=0.1,
+                 drop_path_rate=0.0):
         super().__init__()
 
         self.d_model = d_model
@@ -150,6 +187,9 @@ class SwinBlock(nn.Module):
 
         self.norm1 = nn.LayerNorm(d_model)
         self.attn = WindowAttention(d_model,n_heads,win,dropout_rate=dropout_rate/2)
+
+        #Initialize drop path rate
+        self.drop_path = DropPath(drop_prob=drop_path_rate) if drop_path_rate > 0.0 else nn.Identity()
 
         self.norm2 = nn.LayerNorm(d_model)
         self.mlp = nn.Sequential(
@@ -202,13 +242,15 @@ class SwinBlock(nn.Module):
         #Reverse shift to not have shift anymore
         if self.shift > 0:
             x = torch.roll(x, shifts=(+self.shift, +self.shift), dims=(1,2))
-        
-        x = residual + x.reshape(B,L,C)
+
+        x_flat =  x.reshape(B,L,C)
+        x = residual + self.drop_path(x_flat)
 
         residual2 = x
         x = self.norm2(x)
         x = self.mlp(x)
-        x = residual2 + x
+
+        x = residual2 + self.drop_path(x)
         return x
     
 #Patch Merging
@@ -257,13 +299,17 @@ class PatchMerging(nn.Module):
 class Swin(nn.Module):
     def __init__(self,
                  config:AudioConfig, 
-                 dropout_rate=0.2):
+                 dropout_rate=0.1,
+                 max_dpr=0.1):
         super().__init__()
-        self.architecture_name = "SwinTransformer_8_H"
+        self.architecture_name = "SwinTransformer"
         self.d_model = config.d_model
         win = 8
         self.patch_embed = nn.Conv2d(1,self.d_model, kernel_size=4,stride=4)
         initial_res = (32,32)
+
+        #Generate a list of 4 linearly spaced drop path rates: [0.0, 0.033,0.066,0.1]
+        dpr = [x.item() for x in torch.linspace(0,max_dpr,4)]
 
         #Stage 1
         self.stage1_block = nn.Sequential(
@@ -273,7 +319,9 @@ class Swin(nn.Module):
                       n_heads=config.n_heads,
                       diff=config.d_ff,
                       win=win,
-                      res=initial_res),
+                      res=initial_res,
+                      dropout_rate=dropout_rate,
+                      drop_path_rate=dpr[0]),
 
             #Shift swin block
             SwinBlock(d_model=self.d_model,
@@ -281,7 +329,9 @@ class Swin(nn.Module):
                       n_heads=config.n_heads,
                       diff=config.d_ff,
                       win=win,
-                      res=initial_res)
+                      res=initial_res,
+                      dropout_rate=dropout_rate,
+                      drop_path_rate=dpr[1])
         )
 
         #Patch merging
@@ -297,7 +347,9 @@ class Swin(nn.Module):
                       n_heads=config.n_heads,
                       diff=config.d_ff,
                       win=win//2,
-                      res=stage2_res),
+                      res=stage2_res,
+                      dropout_rate=dropout_rate,
+                      drop_path_rate=dpr[2]),
 
             #Shift swin block
             SwinBlock(d_model=merged_dim,
@@ -305,7 +357,9 @@ class Swin(nn.Module):
                       n_heads=config.n_heads,
                       diff=config.d_ff*2,
                       win=win//2,
-                      res=stage2_res)
+                      res=stage2_res,
+                      dropout_rate=dropout_rate,
+                      drop_path_rate=dpr[3])
             )
        
         self.norm = nn.LayerNorm(merged_dim)

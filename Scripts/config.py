@@ -28,13 +28,13 @@ class AudioConfig:
 
      #---------------------Core Architecture Parameters----------------------
      d_model : int = 128    #Baseline dimension of hidden state
-     n_heads : int = 8      #Number of heads used by transformer
+     n_heads : int = 4      #Number of heads used by transformer
      num_layers: int = 3    #Layer configration
      d_ff : int = d_model*4
      input_layer_channels : list = field(default_factory = lambda:[32,64,128])
 
      #--------------------Training and Optimization-------------------------
-     batch_size: int = 128
+     batch_size: int = 512
      learning_rate: float = 1e-4
      n_epochs : int = 500
      start_from_checkpoint : bool = True

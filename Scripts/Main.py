@@ -53,7 +53,7 @@ def main():
 
     #DEIT Model
     deit = DEIT.DEIT(config)
-
+    
     #Track of active model
     active_model = swin    
 
@@ -77,12 +77,18 @@ def main():
                              config=config)
     
     trainer.RunEpochs(train_dataset=train_dataset,
-                      test_dataset=test_dataset,
+                      test_dataset=ASVspoof2021_test_dataset,
                       val_dataset=val_dataset,
                       n_epochs=config.n_epochs)
+
+    #Reload the absolute best weights back into memory before testing!
+    print("\n--- Training complete. Loading best checkpoint weights for final testing ---")
+    trainer.Load_checkpoint() # This restores the optimal epoch state automatically
     
     #Initialize Evaluation Metric and set best valid acc
     config.highest_val_acc = trainer.best_valid_acc
+    config.optimal_threshold = trainer.optimal_threshold
+
     eval_metric =  evaluation.Evaluation_metric(Trainer=trainer,
                                  model=active_model,
                                  total_training_time=trainer.training_time,
@@ -94,8 +100,8 @@ def main():
     config.roc_auc_value = eval_metric.roc_value
     config.eer_value = eval_metric.eer_value
     config.optimal_threshold = eval_metric.optimal_threshold
-    trainer.optimal_threshold = config.optimal_threshold
     
+
     leaderboard = ResultLeaderboard(config=config,
                                     model_name=trainer.model_name)
     leaderboard.add_run(

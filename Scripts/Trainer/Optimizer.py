@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from Trainer import ModelTrainer
 
 
-def get_swin_optimizer(model, base_lr = 5e-5, decay_rate=0.5):
+def get_swin_optimizer(model, base_lr = 2e-5, decay_rate=0.5):
     parameters_group = []
 
     #Patch embedding and early stages

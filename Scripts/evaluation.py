@@ -313,7 +313,7 @@ class Evaluation_metric:
         print("Dynamic 'speed_vs_accuracy_frontier.png' successfully refreshed from JSON file!")
    
     #Calculate the ROC and AUC values
-    def ROC_AUC_Values(self,y_true,y_probs):
+    def ROC_AUC_Values(self,y_true,y_probs, calibrate_threshold=False):
         #Calculate the ROC curve coordinates
         fpr, tpr, thresholds = roc_curve(y_true,y_probs,pos_label=1)
         fnr = 1 - tpr
@@ -321,7 +321,14 @@ class Evaluation_metric:
         #Locate the intersection point where FPR ~= FNR
         idx = np.nanargmin(np.absolute(fpr - fnr))
         eer = (fpr[idx] + fnr[idx]) / 2
-        self.optimal_threshold = thresholds[idx]
+
+        if calibrate_threshold:
+            self.optimal_threshold = thresholds[idx]
+            print(f" NEW Optimal Decision Threshold Calibrated: {self.optimal_threshold:.6f}")
+        else:
+            # Maintain the value brought over from the ASVspoof 2019 Validation phase
+            print(f" Using Pre-calibrated Frozen Threshold: {self.optimal_threshold:.6f}")
+
 
         #Calculate ROC AUC Score
         auc_score = roc_auc_score(y_true,y_probs)
@@ -364,6 +371,9 @@ class Evaluation_metric:
         test_loss, self.test_acc, test_f1, test_recall, test_preds, test_labels, test_probs,_ = self.trainer.evalModel(train_test_val="test")
         print(f"Raw Default Accuracy: {self.test_acc:.4f}")
 
+        is_2019_validation = (self.trainer.train_test_val == "val") 
+
+
         print("2019 probability statistics")
         print("min :", np.min(test_probs))
         print("max :", np.max(test_probs))
@@ -398,7 +408,7 @@ class Evaluation_metric:
                                 self.trainer.lr_history)
         
         #Plot ROC curve,AUC score and classification Report
-        self.roc_value, self.eer_value, self.optimal_threshold = self.ROC_AUC_Values(test_labels,test_probs)
+        self.roc_value, self.eer_value, self.optimal_threshold = self.ROC_AUC_Values(test_labels,test_probs, calibrate_threshold=is_2019_validation)
 
         #Override self.test_acc with the true tuned accuracy!
         self.test_acc = self.classification_report['accuracy']

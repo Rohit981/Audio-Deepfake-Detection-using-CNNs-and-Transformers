@@ -96,6 +96,7 @@ class ModelTrainer(nn.Module):
         self.lr_history = []
         self.training_time = 0
         self.start_from_checkpoint = start_from_checkpoint
+        self.train_test_val = "test"
         
         if optimal_threshold is None:
             self.optimal_threshold = 0.5  
@@ -113,6 +114,8 @@ class ModelTrainer(nn.Module):
 
         #Intialize best val eer as infinity
         self.best_val_eer = float('inf')
+        self.best_val_loss = float('inf')
+        
 
         #Print logits during inference mode bool
         self.bool_logits = True
@@ -147,6 +150,7 @@ class ModelTrainer(nn.Module):
         self.scheduler = CosineAnnealingLR(self.optimizer, 
                                             T_max=epochs,
                                             eta_min=1e-6)
+
         
         #Create save path
         save_dir = r"D:\Deep Neural Network\ML-Audio_DeepFake\Models"
@@ -157,9 +161,10 @@ class ModelTrainer(nn.Module):
 
     
         #Intialize Augmentation class for X data
-        self.augmentation = ASVspoof2019.Augmentation(frequency_mask_param=15,
-                                         time_mask_param=10,
-                                         noise_prob=0.2)
+        self.augmentation = ASVspoof2019.Augmentation(frequency_mask_param=50,
+                                         time_mask_param=25,
+                                         noise_prob=0.6,
+                                         compression_prob=0.5)
 
     #Monitor Swin transformer attention values
     def monitor_swin_attention(self):
@@ -195,6 +200,125 @@ class ModelTrainer(nn.Module):
                         f"bias_std={bias.std().item():.6e} | "
                         f"bias_abs_max={bias.abs().max().item():.6e}"
                     )
+           # if self.bool_logits == True:
+                        #     # print("\n========== SWIN LOGIT DIAGNOSTIC ==========")
+                        #     # print("Input shape:", X.shape)
+                        #     # print("Logits shape:", fx.shape)
+        
+                        #     # print("Logits mean:", fx.mean().item())
+                        #     # print("Logits std :", fx.std().item())
+                        #     # print("Logits min :", fx.min().item())
+                        #     # print("Logits max :", fx.max().item())
+        
+                        #     # print("\nFirst 20 logits:")
+                        #     # print(fx.flatten()[:20].detach().cpu())
+        
+                        #     # # Compare samples against the first sample
+                        #     # input_difference = (X[1:] - X[0]).abs().mean(dim=(1, 2, 3))
+        
+                        #     # print("Mean difference from first sample:")
+                        #     # print("Mean:", input_difference.mean().item())
+                        #     # print("Std :", input_difference.std().item())
+                        #     # print("Min :", input_difference.min().item())
+                        #     # print("Max :", input_difference.max().item())
+        
+                        #     # print("\n========== SWIN Forward Feature DIAGNOSTIC ==========")
+                        #     # print("Feature shape:", features.shape)
+        
+                        #     # print("Feature mean:", features.mean().item())
+                        #     # print("Feature std :", features.std().item())
+                        #     # print("Feature min :", features.min().item())
+                        #     # print("Feature max :", features.max().item())
+        
+                        #     # print("\nPer-sample feature variation:")
+                        #     # sample_feature_std = features.std(dim=0)
+        
+                        #     # print("Mean feature dimension std:", sample_feature_std.mean().item())
+                        #     # print("Max feature dimension std :", sample_feature_std.max().item())
+                        #     # print("Min feature dimension std :", sample_feature_std.min().item())
+        
+                        #     # print("\nFirst five feature vectors:")
+                        #     # print(features[:5])
+        
+                        #     # outputs = self.model.forward_debug(X)
+        
+                        #     # print("\n========== SWIN STAGE VARIATION ==========")
+        
+                        #     # for name, value in outputs.items():
+                        #     #     print(
+                        #     #         f"{name:15s} | "
+                        #     #         f"shape={tuple(value.shape)} | "
+                        #     #         f"mean={value.mean().item():.8f} | "
+                        #     #         f"std={value.std().item():.8e} | "
+                        #     #         f"min={value.min().item():.8f} | "
+                        #     #         f"max={value.max().item():.8f}"
+                        #     #     )
+        
+                        #     #     variation = calculate_sample_variation(value)
+        
+                        #     #     print("\n========== SWIN VARIATION BY STAGE ==========")
+                        #     #     print(
+                        #     #         f"{name:15s} | "
+                        #     #         f"mean difference={variation['mean']:.8e} | "
+                        #     #         f"max difference={variation['max']:.8e} | "
+                        #     #         f"min difference={variation['min']:.8e}"
+                        #     #     )
+        
+                        #     # print("\n========== STAGE 2 BLOCK DIAGNOSTIC ==========")
+        
+                        #     # for name in [
+                        #     #     "patch_merge",
+                        #     #     "stage2 Block 1",
+                        #     #     "stage2 Block 2"
+                        #     # ]:
+                        #     #     tensor = outputs[name]
+        
+                        #     #     variation = calculate_sample_variation(tensor)
+        
+                        #     #     print(
+                        #     #         f"{name:20s} | "
+                        #     #         f"shape={tuple(tensor.shape)} | "
+                        #     #         f"mean={tensor.mean().item():.8e} | "
+                        #     #         f"std={tensor.std().item():.8e} | "
+                        #     #         f"min={tensor.min().item():.8e} | "
+                        #     #         f"max={tensor.max().item():.8e} | "
+                        #     #         f"sample_mean_diff={variation['mean']:.8e} | "
+                        #     #         f"sample_max_diff={variation['max']:.8e}"
+                        #     #     )
+                        #     block = self.model.stage2_block[0]
+        
+                        #     attention = block.attn
+        
+                        #     print("\n========== STAGE 2 BLOCK 1 ATTENTION WEIGHTS ==========")
+        
+                        #     for name in ["Q", "K", "V", "proj"]:
+        
+                        #         layer = getattr(attention, name)
+        
+                        #         weight = layer.weight.detach()
+        
+                        #         print(
+                        #             f"{name:10s} | "
+                        #             f"weight_shape={tuple(weight.shape)} | "
+                        #             f"weight_mean={weight.mean().item():.6e} | "
+                        #             f"weight_std={weight.std().item():.6e} | "
+                        #             f"weight_abs_max={weight.abs().max().item():.6e}"
+                        #         )
+        
+                        #         if layer.bias is not None:
+        
+                        #             bias = layer.bias.detach()
+        
+                        #             print(
+                        #                 f"{name:10s} | "
+                        #                 f"bias_mean={bias.mean().item():.6e} | "
+                        #                 f"bias_std={bias.std().item():.6e} | "
+                        #                 f"bias_abs_max={bias.abs().max().item():.6e}"
+                        #             )
+        
+        
+                        # self.bool_logits = False
+        
     #Load Resnet50 Model as teacher model
     def LoadResnetModel(self):
         #Load the custom Resnet 50 model
@@ -226,7 +350,7 @@ class ModelTrainer(nn.Module):
 
 
         self.train_loader = dataloader.DataLoader(train_set, batch_size=self.batch_size,sampler=self.sampler, num_workers=0, pin_memory=True)
-        self.test_loader = dataloader.DataLoader(test_set, batch_size=self.batch_size, shuffle=False, num_workers=0)
+        self.test_loader = dataloader.DataLoader(test_set, batch_size=self.batch_size, shuffle=False, num_workers=8)
         self.val_loader = dataloader.DataLoader(val_set, batch_size=self.batch_size, shuffle=False, num_workers=0)
     
     #Compute EER 
@@ -279,15 +403,17 @@ class ModelTrainer(nn.Module):
             #Checkpoint is stored as python dictionary
             #Here we unpack the dictionary to get our previous training states
             state_dict = checkpoint['model_state_dict']
-            load_result = self.model.load_state_dict(checkpoint['model_state_dict'])
+            load_result = self.model.load_state_dict(checkpoint['model_state_dict'], strict=False)
 
             print("\n========== CHECKPOINT VALIDATION ==========")
 
             print("Missing keys:", load_result.missing_keys)
             print("Unexpected keys:", load_result.unexpected_keys)
 
+            true_missing_keys = [k for k in load_result.missing_keys if "drop_path" not in k]
+
             assert len(load_result.missing_keys) == 0, (
-                f"Missing checkpoint keys: {load_result.missing_keys}"
+                f"Critical missing checkpoint weights: {true_missing_keys}"
             )
 
             assert len(load_result.unexpected_keys) == 0, (
@@ -367,6 +493,7 @@ class ModelTrainer(nn.Module):
             'lr_scheduler_state_dict':self.scheduler.state_dict(),
             "best_valid_acc": self.best_valid_acc,
             "best_val_eer": self.best_val_eer,
+            "optimal_threshold": self.optimal_threshold,
             "train_loss": self.train_loss,
             "train_acc": self.train_acc,
             "val_acc" : self.val_acc,
@@ -389,7 +516,8 @@ class ModelTrainer(nn.Module):
             #Set X and Y to device
             X,Y = X.to(self.device), Y.to(self.device)
 
-            X = self.augmentation.forward(X)
+            with torch.no_grad():
+                X = self.augmentation.forward(X)
 
             #Zero out gradient
             self.optimizer.zero_grad()
@@ -407,12 +535,33 @@ class ModelTrainer(nn.Module):
             #Backpropogation and set gradient
             loss.backward()
 
+            # if i == 0:
+
+            #     print("\n========== GRADIENT INSPECTION ==========")
+
+            #     for name, param in self.model.named_parameters():
+            #         if param.requires_grad:
+            #             if param.grad is None:
+            #                 print(f"{name}: grad=None")
+
+            #         else:
+            #             grad_norm = param.grad.detach().norm().item()
+            #             grad_abs_mean = param.grad.detach().abs().mean().item()
+            #             grad_abs_max = param.grad.detach().abs().max().item()
+
+            #             print(
+            #                 f"{name:60s} | "
+            #                 f"norm={grad_norm:.6e} | "
+            #                 f"abs_mean={grad_abs_mean:.6e} | "
+            #                 f"abs_max={grad_abs_max:.6e}"
+            #             )
             #Gradient Clipping
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
 
             #Record the Learning Rate
             current_lr = self.optimizer.param_groups[0]['lr']
             self.lr_history.append(current_lr)
+
 
             #Optimization
             self.optimizer.step()
@@ -465,20 +614,22 @@ class ModelTrainer(nn.Module):
     #Evaluation of model this runs per one epoch
     def evalModel(self, train_test_val = "test"):
         #Check for data loader
+        self.train_test_val = train_test_val
         if self.test_loader is None:
             print(f"No test loader available")
+            return None
         
         self.model.to(self.device)
 
         loader = None 
         state = "Evaluating"
-        if train_test_val == "test":
+        if self.train_test_val == "test":
             loader = self.test_loader
             state += "test"
-        elif train_test_val == "train":
+        elif self.train_test_val == "train":
             loader = self.train_loader
             state += "train"
-        elif train_test_val == "val":
+        elif self.train_test_val == "val":
             loader = self.val_loader
             state += "val"
         else:
@@ -496,6 +647,7 @@ class ModelTrainer(nn.Module):
         f1,recall = 0,0
 
         self.model.eval()
+        torch.cuda.empty_cache()
         with torch.inference_mode():
             for i, (X,Y) in enumerate(tqdm(loader,leave=False, desc=state)):
                 #Set X, Y to device
@@ -507,132 +659,12 @@ class ModelTrainer(nn.Module):
                 else:   
                     #Forward pass
                     fx = self.model(X)
-                    features = self.model.forward_features(X)
+                    # features = self.model.forward_features(X)
                     # .squeeze(1) if len(self.model(X).shape) > 1 else self.model(X)
                 # Ensure fx is squeezed down to [Batch] if a standard model returns [Batch, 1]
                 if len(fx.shape) > 1:
                     fx = fx.squeeze(-1)
-                
-
-                # if self.bool_logits == True:
-                #     # print("\n========== SWIN LOGIT DIAGNOSTIC ==========")
-                #     # print("Input shape:", X.shape)
-                #     # print("Logits shape:", fx.shape)
-
-                #     # print("Logits mean:", fx.mean().item())
-                #     # print("Logits std :", fx.std().item())
-                #     # print("Logits min :", fx.min().item())
-                #     # print("Logits max :", fx.max().item())
-
-                #     # print("\nFirst 20 logits:")
-                #     # print(fx.flatten()[:20].detach().cpu())
-
-                #     # # Compare samples against the first sample
-                #     # input_difference = (X[1:] - X[0]).abs().mean(dim=(1, 2, 3))
-
-                #     # print("Mean difference from first sample:")
-                #     # print("Mean:", input_difference.mean().item())
-                #     # print("Std :", input_difference.std().item())
-                #     # print("Min :", input_difference.min().item())
-                #     # print("Max :", input_difference.max().item())
-
-                #     # print("\n========== SWIN Forward Feature DIAGNOSTIC ==========")
-                #     # print("Feature shape:", features.shape)
-
-                #     # print("Feature mean:", features.mean().item())
-                #     # print("Feature std :", features.std().item())
-                #     # print("Feature min :", features.min().item())
-                #     # print("Feature max :", features.max().item())
-
-                #     # print("\nPer-sample feature variation:")
-                #     # sample_feature_std = features.std(dim=0)
-
-                #     # print("Mean feature dimension std:", sample_feature_std.mean().item())
-                #     # print("Max feature dimension std :", sample_feature_std.max().item())
-                #     # print("Min feature dimension std :", sample_feature_std.min().item())
-
-                #     # print("\nFirst five feature vectors:")
-                #     # print(features[:5])
-
-                #     # outputs = self.model.forward_debug(X)
-
-                #     # print("\n========== SWIN STAGE VARIATION ==========")
-
-                #     # for name, value in outputs.items():
-                #     #     print(
-                #     #         f"{name:15s} | "
-                #     #         f"shape={tuple(value.shape)} | "
-                #     #         f"mean={value.mean().item():.8f} | "
-                #     #         f"std={value.std().item():.8e} | "
-                #     #         f"min={value.min().item():.8f} | "
-                #     #         f"max={value.max().item():.8f}"
-                #     #     )
-
-                #     #     variation = calculate_sample_variation(value)
-
-                #     #     print("\n========== SWIN VARIATION BY STAGE ==========")
-                #     #     print(
-                #     #         f"{name:15s} | "
-                #     #         f"mean difference={variation['mean']:.8e} | "
-                #     #         f"max difference={variation['max']:.8e} | "
-                #     #         f"min difference={variation['min']:.8e}"
-                #     #     )
-
-                #     # print("\n========== STAGE 2 BLOCK DIAGNOSTIC ==========")
-
-                #     # for name in [
-                #     #     "patch_merge",
-                #     #     "stage2 Block 1",
-                #     #     "stage2 Block 2"
-                #     # ]:
-                #     #     tensor = outputs[name]
-
-                #     #     variation = calculate_sample_variation(tensor)
-
-                #     #     print(
-                #     #         f"{name:20s} | "
-                #     #         f"shape={tuple(tensor.shape)} | "
-                #     #         f"mean={tensor.mean().item():.8e} | "
-                #     #         f"std={tensor.std().item():.8e} | "
-                #     #         f"min={tensor.min().item():.8e} | "
-                #     #         f"max={tensor.max().item():.8e} | "
-                #     #         f"sample_mean_diff={variation['mean']:.8e} | "
-                #     #         f"sample_max_diff={variation['max']:.8e}"
-                #     #     )
-                #     block = self.model.stage2_block[0]
-
-                #     attention = block.attn
-
-                #     print("\n========== STAGE 2 BLOCK 1 ATTENTION WEIGHTS ==========")
-
-                #     for name in ["Q", "K", "V", "proj"]:
-
-                #         layer = getattr(attention, name)
-
-                #         weight = layer.weight.detach()
-
-                #         print(
-                #             f"{name:10s} | "
-                #             f"weight_shape={tuple(weight.shape)} | "
-                #             f"weight_mean={weight.mean().item():.6e} | "
-                #             f"weight_std={weight.std().item():.6e} | "
-                #             f"weight_abs_max={weight.abs().max().item():.6e}"
-                #         )
-
-                #         if layer.bias is not None:
-
-                #             bias = layer.bias.detach()
-
-                #             print(
-                #                 f"{name:10s} | "
-                #                 f"bias_mean={bias.mean().item():.6e} | "
-                #                 f"bias_std={bias.std().item():.6e} | "
-                #                 f"bias_abs_max={bias.abs().max().item():.6e}"
-                #             )
-
-
-                # self.bool_logits = False
-
+            
                 #Loss
                 loss = self.loss_fn(fx, Y)
                 epoch_loss += loss.item()
@@ -652,24 +684,16 @@ class ModelTrainer(nn.Module):
 
                 #Calculate probs for ROC Curve and auc score
                 all_probs.extend(probs_flat.cpu().numpy())
-
-        # # print("Logits:", logits[:20])
-        # print("Probs:", probs[:20])
-        # print("Preds:", (probs > 0.5).float()[:20])
-        # print("Labels:", Y[:20])
-        # print("Prob min:", probs.min().item())
-        # print("Prob max:", probs.max().item())
-        # print("Prob mean:", probs.mean().item())
         
         epoc_acc = correct_pred/sample
         epoch_loss /=len(loader)
         
         #Log accuracy, loss, F1 and recall from the epoch
-        if train_test_val == "train":
+        if self.train_test_val == "train":
             self.train_acc.append(epoc_acc)
             val_eer = float('inf')
             
-        elif train_test_val == "val":
+        elif self.train_test_val == "val":
             self.val_acc.append(epoc_acc)
             self.val_loss.append(epoch_loss)
             f1 = f1_score(all_labels,all_preds, zero_division=0)
@@ -678,7 +702,7 @@ class ModelTrainer(nn.Module):
             #Calculate EER in Val
             val_eer = self.compute_eer(all_labels,all_probs)
 
-        elif train_test_val == "test":
+        elif self.train_test_val == "test":
             f1 = f1_score(all_labels,all_preds, zero_division=0)
             recall = recall_score(all_labels,all_preds, zero_division=0)
 
@@ -739,16 +763,24 @@ class ModelTrainer(nn.Module):
         start_time = time.time()
 
         #Initializing early stopping variables
-        patience = 10 #Stop training if val_loss doesn't improve for 15 epochs straight
+        patience = 15 #Stop training if val_loss doesn't improve for 15 epochs straight
         patience_counter = 0
-        # best_val_loss = float('inf')
-
+        
         for epoch in pbar:
+            # Check the training and validation modes
+            print("Model training mode:", self.model.training)
+
+            # if epoch in [0, 1, 20, 30, 40, 80, 81, 82, 83, 84, 90]:
+            #    print(f"\n========== LR CHECK: EPOCH {epoch} ==========")
+
+            #    for i, group in enumerate(self.optimizer.param_groups):
+            #       print(f"Group {i}: lr={group['lr']:.10e}")
+
             self.TrainingLoop()
 
             #Calculate evaluation
             _, train_acc,_,_, _, _, _,_= self.evalModel(train_test_val="train")
-            val_loss, val_acc,val_f1,val_recall, _, _, _, current_val_eer = self.evalModel(train_test_val="val")
+            val_loss, val_acc,val_f1,val_recall, _, val_labels, val_probs, current_val_eer = self.evalModel(train_test_val="val")
 
             # self.debug_swin()
 
@@ -764,8 +796,7 @@ class ModelTrainer(nn.Module):
             #Early Stopping to halt model training before overfitting
             # current_val_loss = val_loss 
 
-            if val_acc > self.best_valid_acc:
-                self.best_valid_acc = val_acc
+                
 
             # if current_val_eer < self.best_val_eer:
             #     self.best_val_eer = current_val_eer
@@ -775,18 +806,37 @@ class ModelTrainer(nn.Module):
             if hasattr(self, 'scheduler') and self.scheduler is not None:
                 self.scheduler.step()
 
-            if(epoch + 1) % 2 == 0:
-                self.monitor_swin_attention()
+            # if(epoch + 1) % 2 == 0:
+            #     self.monitor_swin_attention()
+
+            # Calculate the optimal threshold for THIS specific validation state
+            if len(np.unique(np.round(val_probs, 5))) > 1:
+                val_fpr, val_tpr, val_thresholds = roc_curve(val_labels, val_probs, pos_label=1)
+                val_fnr = 1 - val_tpr
+                val_idx = np.nanargmin(np.absolute(val_fpr - val_fnr))
+                # Store the threshold that balances FPR/FNR on the 2019 validation set
+                epoch_calibrated_threshold = val_thresholds[val_idx]
+            else:
+                epoch_calibrated_threshold = self.optimal_threshold
                
 
-            #Check for improvement
+           #Check for improvement
             if current_val_eer < self.best_val_eer or epoch == self.start_epoch:
                 if epoch == self.start_epoch and current_val_eer >= self.best_val_eer:
                     print(f" Initial fine-tuning epoch baseline registered at {current_val_eer:.2f}%. Saving anchor point.")
                 else:
-                    print(f" Validation EER improved from {self.best_val_eer:.2f}% to {current_val_eer:.2f}%!")
+                    print(
+                        f"Validation EER improved from "
+                        f"{self.best_val_eer:.8f}% to {current_val_eer:.8f}%!"
+                    )
+
+                    print(
+                        f"Absolute improvement: "
+                        f"{self.best_val_eer - current_val_eer:.8f} percentage points"
+                    )
                     
                 self.best_val_eer = current_val_eer
+                self.optimal_threshold = epoch_calibrated_threshold 
                 patience_counter = 0 #Reset the clock because model improved
 
                 #Save the checkpoint

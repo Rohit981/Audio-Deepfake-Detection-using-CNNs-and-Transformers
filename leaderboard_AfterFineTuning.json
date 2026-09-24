@@ -35,11 +35,11 @@
         "Training Time (s)": 2366.44
     },
     "SwinTransformer": {
-        "Highest Val Acc": 0.9965383996135888,
-        "Test Acc": 0.9285062537726182,
-        "Test ROC-AUC": 0.97670709938921,
-        "Test EER (%)": 7.138001359619306,
-        "Training Time (s)": 4855.193066835403
+        "Highest Val Acc": 0.9975044276284012,
+        "Test Acc": 0.9307943905554698,
+        "Test ROC-AUC": 0.9732026413587884,
+        "Test EER (%)": 6.927315384408936,
+        "Training Time (s)": 791.5669586658478
     },
     "CNNTRANSFORMER": {
         "Highest Val Acc": 0.9998,
@@ -47,5 +47,12 @@
         "Test ROC-AUC": 0.98,
         "Test EER (%)": 7.89,
         "Training Time (s)": 591.11
+    },
+    "SwinTransformer_8_H": {
+        "Highest Val Acc": 0.9989,
+        "Test Acc": 0.9247,
+        "Test ROC-AUC": 0.9702,
+        "Test EER (%)": 7.53,
+        "Training Time (s)": 801.5815398693085
     }
 }

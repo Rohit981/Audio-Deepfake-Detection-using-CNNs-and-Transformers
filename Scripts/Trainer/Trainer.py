@@ -12,6 +12,7 @@ from Resnet50 import CustomResnet50
 import torch.nn.functional as F
 from sklearn.metrics import roc_curve
 import numpy as np
+# from SSLFrontendClassifier import SSLFronendClassifier
 
 #Temperory Debug function
 def calculate_sample_variation(tensor):
@@ -83,7 +84,15 @@ class ModelTrainer(nn.Module):
                  learning_rate=0.0,
                  optimizer = None):
         super(ModelTrainer,self).__init__()
-        
+
+        #Initialize wav2vec2 or wavlm
+        # model_type = 'wavlm'
+        # model = SSLFronendClassifier(
+        #     model_type=model_type,
+        #     num_classes=1,
+        #     freeze_frontend=True
+        # )
+
         #Intialize variables for training and evaluation
         self.device = device
         self.model = model.to(device)
@@ -97,6 +106,8 @@ class ModelTrainer(nn.Module):
         self.training_time = 0
         self.start_from_checkpoint = start_from_checkpoint
         self.train_test_val = "test"
+
+       
         
         if optimal_threshold is None:
             self.optimal_threshold = 0.5  
@@ -138,7 +149,7 @@ class ModelTrainer(nn.Module):
             self.teacher_resnet = self.LoadResnetModel()
             self.temperature = Temperature
             self.alpha = alpha
-            self.distil_type = distil_type 
+            self.distil_type = distil_type.lower() 
 
         #Set Optimizer
         if optimizer is not None:
@@ -149,7 +160,7 @@ class ModelTrainer(nn.Module):
         #Initilaize a LR scheduler
         self.scheduler = CosineAnnealingLR(self.optimizer, 
                                             T_max=epochs,
-                                            eta_min=1e-6)
+                                            eta_min=1e-4)
 
         
         #Create save path
@@ -161,10 +172,10 @@ class ModelTrainer(nn.Module):
 
     
         #Intialize Augmentation class for X data
-        self.augmentation = ASVspoof2019.Augmentation(frequency_mask_param=50,
-                                         time_mask_param=25,
-                                         noise_prob=0.6,
-                                         compression_prob=0.5)
+        self.augmentation = ASVspoof2019.Augmentation(frequency_mask_param=24,
+                                         time_mask_param=24,
+                                         noise_prob=0.5,
+                                         compression_prob=0.7)
 
     #Monitor Swin transformer attention values
     def monitor_swin_attention(self):
@@ -318,7 +329,114 @@ class ModelTrainer(nn.Module):
         
         
                         # self.bool_logits = False
-        
+    
+    #Debug whether different inputs produce different model outputs
+    def debug_inference_outputs(self, loader=None):
+        self.model.eval()
+
+        #Use the test loader by default
+        if loader is None:
+            loader = self.test_loader
+
+        if loader is None:
+            print("Data Loader has not been Initialized")
+
+        #Get one batch
+        X,Y = next(iter(loader))
+
+        X = X.to(self.device, non_blocking=True)
+        Y = Y.to(self.device, non_blocking=True)
+
+        #Make sure atleast we have three samples
+        if X.size(0) < 3:
+            raise ValueError('The Batch must contain at least 3 samples')
+
+        #Select three different samples
+        x1 = X[0:1]
+        x2 = X[1:2]
+        x3 = X[2:3]
+
+        with torch.inference_mode():
+
+            #Forward pass for each individual samples
+            output1 = self.model(x1)
+            output2 = self.model(x2)
+            output3 = self.model(x3)
+
+            #Convert raw logits into probabilites
+            probabilites_1 = torch.sigmoid(output1)
+            probabilites_2 = torch.sigmoid(output2)
+            probabilites_3 = torch.sigmoid(output3)
+
+        print("\n========== INFERENCE DEBUG ==========")
+
+        # Input statistics
+        print("\n----- Input Statistics -----")
+
+        for name, x in [
+            ("Input 1", x1),
+            ("Input 2", x2),
+            ("Input 3", x3)
+        ]:
+            print(
+                f"{name}: "
+                f"mean={x.mean().item():.8f}, "
+                f"std={x.std().item():.8f}, "
+                f"min={x.min().item():.8f}, "
+                f"max={x.max().item():.8f}"
+            )
+
+        # Raw model outputs
+        print("\n----- Raw Logits -----")
+
+        print("Input 1 output:", output1.detach().cpu().flatten())
+        print("Input 2 output:", output2.detach().cpu().flatten())
+        print("Input 3 output:", output3.detach().cpu().flatten())
+
+        # Probabilities after sigmoid
+        print("\n----- Probabilities -----")
+
+        print("Input 1 probability:", probabilites_1.detach().cpu().flatten())
+        print("Input 2 probability:", probabilites_2.detach().cpu().flatten())
+        print("Input 3 probability:", probabilites_3.detach().cpu().flatten())
+
+        # Check whether the outputs are identical
+        logits = torch.cat(
+            [
+                output1.reshape(-1),
+                output2.reshape(-1),
+                output3.reshape(-1)
+            ]
+        )
+
+        print("\n----- Output Variation -----")
+        print("Logit mean:", logits.mean().item())
+        print("Logit std:", logits.std().item())
+        print("Logit min:", logits.min().item())
+        print("Logit max:", logits.max().item())
+
+        print("====================================\n")  
+
+    def inspect_classifier_weights(self):
+        self.model.eval()
+
+        print("\n========== CLASSIFIER WEIGHT DEBUG ==========")
+
+        for name, module in self.model.named_modules():
+            if isinstance(module, nn.Linear):
+                weight = module.weight.detach()
+                print(f"\nLayer: {name}")
+                print("Weight shape:", tuple(weight.shape))
+                print("Weight mean:", weight.mean().item())
+                print("Weight std:", weight.std().item())
+                print("Weight min:", weight.min().item())
+                print("Weight max:", weight.max().item())
+
+                if module.bias is not None:
+                    bias = module.bias.detach()
+                    print("Bias:", bias.cpu())
+
+        print("=============================================\n")
     #Load Resnet50 Model as teacher model
     def LoadResnetModel(self):
         #Load the custom Resnet 50 model
@@ -339,7 +457,7 @@ class ModelTrainer(nn.Module):
 
     #Set optimizer
     def set_optimizer(self):     
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate)
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=1e-4)
         
     
     #Set data loader for test and train
@@ -350,7 +468,7 @@ class ModelTrainer(nn.Module):
 
 
         self.train_loader = dataloader.DataLoader(train_set, batch_size=self.batch_size,sampler=self.sampler, num_workers=0, pin_memory=True)
-        self.test_loader = dataloader.DataLoader(test_set, batch_size=self.batch_size, shuffle=False, num_workers=8)
+        self.test_loader = dataloader.DataLoader(test_set, batch_size=self.batch_size, shuffle=False, num_workers=0)
         self.val_loader = dataloader.DataLoader(val_set, batch_size=self.batch_size, shuffle=False, num_workers=0)
     
     #Compute EER 
@@ -426,31 +544,31 @@ class ModelTrainer(nn.Module):
 
 
             # Make sure the checkpoint is loaded before inspecting
-            print("\n========== LOADED SWIN CLASSIFIER HEAD ==========")
+            # print("\n========== LOADED SWIN CLASSIFIER HEAD ==========")
 
-            print("FC layer:")
-            print(self.model.fc)
+            # print("FC layer:")
+            # print(self.model.fc)
 
-            fc_weight = self.model.fc.weight.detach().cpu()
-            fc_bias = self.model.fc.bias.detach().cpu()
+            # fc_weight = self.model.fc.weight.detach().cpu()
+            # fc_bias = self.model.fc.bias.detach().cpu()
 
-            print("\nFC weight shape:")
-            print(fc_weight.shape)
+            # print("\nFC weight shape:")
+            # print(fc_weight.shape)
 
-            print("\nFC weight statistics:")
-            print("Mean:", fc_weight.mean().item())
-            print("Std :", fc_weight.std().item())
-            print("Min :", fc_weight.min().item())
-            print("Max :", fc_weight.max().item())
+            # print("\nFC weight statistics:")
+            # print("Mean:", fc_weight.mean().item())
+            # print("Std :", fc_weight.std().item())
+            # print("Min :", fc_weight.min().item())
+            # print("Max :", fc_weight.max().item())
 
-            print("\nFC bias:")
-            print(fc_bias)
+            # print("\nFC bias:")
+            # print(fc_bias)
 
-            print("\nCheckpoint classifier keys:")
-            print([
-                key for key in state_dict.keys()
-                if key.startswith("fc.")
-            ])
+            # print("\nCheckpoint classifier keys:")
+            # print([
+            #     key for key in state_dict.keys()
+            #     if key.startswith("fc.")
+            # ])
 
             self.best_valid_acc = checkpoint['best_valid_acc']
 
@@ -484,7 +602,7 @@ class ModelTrainer(nn.Module):
     
     #Save Checkpoint
     def save_checkpoint(self, epoch, valid_acc):
-        # self.best_valid_acc = valid_acc
+        self.best_valid_acc = valid_acc
 
         torch.save({
             "epoch" : epoch,
@@ -513,8 +631,12 @@ class ModelTrainer(nn.Module):
         #Train
         self.model.train()
         for i, (X,Y) in enumerate(tqdm(self.train_loader, leave=False, desc="Training")):
+
+            # if len(X.shape) == 3:
+            #     X = X.squeeze(1)
+            
             #Set X and Y to device
-            X,Y = X.to(self.device), Y.to(self.device)
+            X,Y = X.to(self.device, non_blocking=True), Y.to(self.device, non_blocking=True)
 
             with torch.no_grad():
                 X = self.augmentation.forward(X)
@@ -583,7 +705,8 @@ class ModelTrainer(nn.Module):
                 teacher_logits = self.teacher_resnet(X).squeeze(-1)
             
             #Base loss: Always evaluate the CLS head against true dataset labels
-            loss_ground_truth = self.loss_fn(logits_cls,Y)
+            Y_squeezed = Y.squeeze(-1) if len(Y.shape) > 1 else Y
+            loss_ground_truth = self.loss_fn(logits_cls,Y_squeezed.float())
             loss_distillaton = 0
 
             #Distillation loss: Branch dynamically based on experiment type
@@ -604,7 +727,7 @@ class ModelTrainer(nn.Module):
                 soft_student_preds = torch.sigmoid(logits_distil/self.temperature)
                 
                 #Calculate loss and scale gradient back by multiplying by T^2
-                loss_distillaton = F.binary_cross_entropy(soft_student_preds, soft_teacher_targets)*(self.temperature**2)
+                loss_distillaton = nn.BCEWithLogitsLoss()(soft_student_preds, soft_teacher_targets)*(self.temperature**2)
             
             loss = (1-self.alpha) * loss_ground_truth + self.alpha*loss_distillaton
 
@@ -644,12 +767,17 @@ class ModelTrainer(nn.Module):
         all_preds = []
         all_labels = []
         all_probs = []
+        all_logits = []
         f1,recall = 0,0
 
         self.model.eval()
         torch.cuda.empty_cache()
         with torch.inference_mode():
             for i, (X,Y) in enumerate(tqdm(loader,leave=False, desc=state)):
+
+                # if len(X.shape) == 3:
+                #     X = X.squeeze(1)
+
                 #Set X, Y to device
                 X,Y = X.to(self.device, non_blocking=True), Y.to(self.device, non_blocking=True)
 
@@ -684,6 +812,7 @@ class ModelTrainer(nn.Module):
 
                 #Calculate probs for ROC Curve and auc score
                 all_probs.extend(probs_flat.cpu().numpy())
+                all_logits.extend(fx.view(-1).cpu().numpy())
         
         epoc_acc = correct_pred/sample
         epoch_loss /=len(loader)
@@ -709,7 +838,7 @@ class ModelTrainer(nn.Module):
             #Calculate EER in test
             val_eer = self.compute_eer(all_labels,all_probs)
         
-        return epoch_loss,epoc_acc,f1,recall,all_preds,all_labels,all_probs, val_eer
+        return epoch_loss,epoc_acc,f1,recall,all_preds,all_labels,all_probs, val_eer,all_logits
     
     # def debug_swin(self):
     #     self.model.eval()
@@ -746,7 +875,10 @@ class ModelTrainer(nn.Module):
     #         x = self.model.fc(x)
     #         print("Logit std:", x.std().item())
     #         print("Logits:", x[:20].squeeze())
-        
+
+    
+
+
     #Run through epochs, train and evaluate the model
     def RunEpochs(self,
                   train_dataset, 
@@ -756,6 +888,8 @@ class ModelTrainer(nn.Module):
         #Set Data Loader
         self.set_data(train_set=train_dataset,test_set=test_dataset,val_set=val_dataset)
 
+        # self.debug_inference_outputs(self.test_loader)
+
         #Train and val
         pbar = trange(self.start_epoch, n_epochs, leave=False, desc="Epoch")
 
@@ -763,26 +897,31 @@ class ModelTrainer(nn.Module):
         start_time = time.time()
 
         #Initializing early stopping variables
-        patience = 15 #Stop training if val_loss doesn't improve for 15 epochs straight
+        patience = 8 #Stop training if val_loss doesn't improve for 15 epochs straight
         patience_counter = 0
         
         for epoch in pbar:
-            # Check the training and validation modes
-            print("Model training mode:", self.model.training)
-
-            # if epoch in [0, 1, 20, 30, 40, 80, 81, 82, 83, 84, 90]:
-            #    print(f"\n========== LR CHECK: EPOCH {epoch} ==========")
-
-            #    for i, group in enumerate(self.optimizer.param_groups):
-            #       print(f"Group {i}: lr={group['lr']:.10e}")
-
+           
             self.TrainingLoop()
 
             #Calculate evaluation
-            _, train_acc,_,_, _, _, _,_= self.evalModel(train_test_val="train")
-            val_loss, val_acc,val_f1,val_recall, _, val_labels, val_probs, current_val_eer = self.evalModel(train_test_val="val")
+            _, train_acc,_,_, _, _, _,_,_= self.evalModel(train_test_val="train")
+            val_loss, val_acc,val_f1,val_recall, _, val_labels, val_probs, current_val_eer,_ = self.evalModel(train_test_val="val")
 
             # self.debug_swin()
+
+            for i in range(10):
+                x, y = test_dataset[i]
+
+                print(
+                    i,
+                    "label =", y.item(),
+                    "shape =", x.shape,
+                    "mean =", x.mean().item(),
+                    "std =", x.std().item(),
+                    "min =", x.min().item(),
+                    "max =", x.max().item()
+                )
 
             train_loss = self.train_loss[-1]
 
@@ -796,20 +935,12 @@ class ModelTrainer(nn.Module):
             #Early Stopping to halt model training before overfitting
             # current_val_loss = val_loss 
 
-                
-
-            # if current_val_eer < self.best_val_eer:
-            #     self.best_val_eer = current_val_eer
-            #     self.save_checkpoint(epoch,val_acc)
-
             # Step the scheduler!
             if hasattr(self, 'scheduler') and self.scheduler is not None:
                 self.scheduler.step()
+            
 
-            # if(epoch + 1) % 2 == 0:
-            #     self.monitor_swin_attention()
-
-            # Calculate the optimal threshold for THIS specific validation state
+             # Calculate the optimal threshold for THIS specific validation state
             if len(np.unique(np.round(val_probs, 5))) > 1:
                 val_fpr, val_tpr, val_thresholds = roc_curve(val_labels, val_probs, pos_label=1)
                 val_fnr = 1 - val_tpr
@@ -818,39 +949,46 @@ class ModelTrainer(nn.Module):
                 epoch_calibrated_threshold = val_thresholds[val_idx]
             else:
                 epoch_calibrated_threshold = self.optimal_threshold
-               
 
-           #Check for improvement
-            if current_val_eer < self.best_val_eer or epoch == self.start_epoch:
-                if epoch == self.start_epoch and current_val_eer >= self.best_val_eer:
-                    print(f" Initial fine-tuning epoch baseline registered at {current_val_eer:.2f}%. Saving anchor point.")
-                else:
-                    print(
-                        f"Validation EER improved from "
-                        f"{self.best_val_eer:.8f}% to {current_val_eer:.8f}%!"
-                    )
-
-                    print(
-                        f"Absolute improvement: "
-                        f"{self.best_val_eer - current_val_eer:.8f} percentage points"
-                    )
-                    
-                self.best_val_eer = current_val_eer
-                self.optimal_threshold = epoch_calibrated_threshold 
-                patience_counter = 0 #Reset the clock because model improved
-
-                #Save the checkpoint
-                self.save_checkpoint(epoch,val_acc)
-
+            #Save checkpoints based on if checkpoint exist or not
+            if self.start_from_checkpoint == False:
+                if current_val_eer < self.best_val_eer:
+                    self.best_val_eer = current_val_eer
+                    self.optimal_threshold = epoch_calibrated_threshold 
+                    self.save_checkpoint(epoch,val_acc)
             else:
-                patience_counter +=1
-                print(f"Validation EER did not improve. Early Stopping counter: {patience_counter}")
+                if current_val_eer < self.best_val_eer or epoch == self.start_epoch:
+                    if epoch == self.start_epoch and current_val_eer >= self.best_val_eer:
+                        print(f" Initial fine-tuning epoch baseline registered at {current_val_eer:.2f}%. Saving anchor point.")
+                    else:
+                        print(
+                            f"Validation EER improved from "
+                            f"{self.best_val_eer:.8f}% to {current_val_eer:.8f}%!"
+                        )
+    
+                        print(
+                            f"Absolute improvement: "
+                            f"{self.best_val_eer - current_val_eer:.8f} percentage points"
+                        )
+                        
+                    self.best_val_eer = current_val_eer
+                    self.optimal_threshold = epoch_calibrated_threshold 
+                    patience_counter = 0 #Reset the clock because model improved
+    
+                    #Save the checkpoint
+                    self.save_checkpoint(epoch,val_acc)
             
-            if patience_counter >=patience:
-                print(f"Early Stopping trigger at epoch {epoch}! Stopping training to prevent overfitting")
-                break
-            
-            
+                else:
+                    patience_counter +=1
+                    print(f"Validation EER did not improve. Early Stopping counter: {patience_counter}")
+                
+                if patience_counter >=patience:
+                    print(f"Early Stopping trigger at epoch {epoch}! Stopping training to prevent overfitting")
+                    break
+
+            # if(epoch + 1) % 2 == 0:
+            #     self.monitor_swin_attention()
+  
         end_time = time.time()
 
         self.training_time = end_time - start_time

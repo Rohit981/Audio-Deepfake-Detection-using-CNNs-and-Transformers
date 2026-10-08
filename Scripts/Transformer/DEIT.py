@@ -5,6 +5,7 @@ from config import AudioConfig
 import torchvision.models as models
 from tqdm import tqdm
 import torch.optim as optim
+from Transformer.SwinTransformer import DropPath
 
 
 #Patch encoding to create patches of images and will be used as positional encoder
@@ -52,7 +53,8 @@ class EncoderBlock(nn.Module):
                  d_model,
                  d_ff,
                  n_heads,
-                 dropout_value=0.4):
+                 dropout_value=0.1,
+                 drop_prob = 0.1):
         super().__init__()
 
         #First layer Multiheaded attention and layer norm
@@ -64,6 +66,7 @@ class EncoderBlock(nn.Module):
         self.positionalWise = PositionWiseFeedForward(d_model,d_ff)
 
         #Regularization
+        self.drop_path = DropPath(drop_prob)
         self.dropout = nn.Dropout(dropout_value)
     
     def forward(self,x):
@@ -71,12 +74,12 @@ class EncoderBlock(nn.Module):
         #Calculate the attention output by using pre normalization
         norm_x_1 = self.layernorm1(x)
         attn_output = self.multiHeaded(norm_x_1,norm_x_1,norm_x_1,mask=None)
-        x = x + self.dropout(attn_output) # residual connection
+        x = x + self.drop_path(self.dropout(attn_output)) # residual connection
 
         #Positional Feed Forward by using pre normalization
         norm_x_2 = self.layernorm2(x)
         ff_output = self.positionalWise(norm_x_2)
-        x = x + self.dropout(ff_output)
+        x = x + self.drop_path(self.dropout(ff_output))
         return x
 
 #Transformer layer uses the encoder block and does classification
@@ -86,16 +89,19 @@ class TransformerLayer(nn.Module):
                  n_heads,
                  num_layers,
                  d_ff,
-                 num_classes):
+                 num_classes,
+                 max_drop_path=0.1):
         super().__init__()
 
         #Regularization
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.4)
+
+        drop_path_rates = [x.item() for x in torch.linspace(0.0, max_drop_path, num_layers)]
 
         #Sequential stack of encoder layer
         self.encoder_layer = nn.ModuleList([
-            EncoderBlock(d_model,d_ff,n_heads)
-            for _ in range(num_layers)
+            EncoderBlock(d_model,d_ff,n_heads, drop_prob=drop_path_rates[i])
+            for i in range(num_layers)
         ])
 
         #Classification Head outputing cls and distil logits for BCELogitsLoss
@@ -103,8 +109,6 @@ class TransformerLayer(nn.Module):
         self.fc_dist = nn.Linear(d_model,num_classes) #map teacher context
     
     def forward(self,x):
-        x = self.dropout(x)
-
         #loop through encoder block
         for layer in self.encoder_layer:
             x = layer(x)
@@ -114,6 +118,9 @@ class TransformerLayer(nn.Module):
         
         #Slice out the distil token vector
         distil_token_vector = x[:,1] # Index 1 = distil Token
+
+        cls_token_vector = self.dropout(cls_token_vector)
+        distil_token_vector = self.dropout(distil_token_vector)
 
         #Project them independently
         logits_cls = self.fc_cls(cls_token_vector).squeeze(-1) #Shape: [Batch]

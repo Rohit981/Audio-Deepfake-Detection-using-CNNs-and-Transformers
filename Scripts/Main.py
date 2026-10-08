@@ -1,4 +1,4 @@
-from DataSets import ASVspoof2019,ASVspoof2021DF
+from DataSets import ASVspoof2019,ASVspoof2021DF, IntheWild
 import os
 from Resnet50 import CustomResnet50
 from Trainer import Trainer, Optimizer
@@ -20,9 +20,9 @@ def main():
     config.set_seed(123)
 
     #Instantiate Datasets
-    train_dataset = ASVspoof2019.ASVpoof2019Dataset(part="train", precompute=False)
-    val_dataset = ASVspoof2019.ASVpoof2019Dataset(part="dev", precompute=False)
-    test_dataset = ASVspoof2019.ASVpoof2019Dataset(part="eval",precompute=False)
+    train_dataset = ASVspoof2019.ASVpoof2019Dataset(part="train", precompute=False, ram_caching=True)
+    val_dataset = ASVspoof2019.ASVpoof2019Dataset(part="dev", precompute=False, ram_caching=True)
+    test_dataset = ASVspoof2019.ASVpoof2019Dataset(part="eval",precompute=False, ram_caching=False)
 
     #Test ASVspoof2021DF test dataset
     ASVspoof2021_test_dataset = ASVspoof2021DF.ASVspoof2021DFDataset(
@@ -31,6 +31,13 @@ def main():
         n_mels=128,
         precompute=False,
         ram_cache=False
+    )
+
+    InTheWild_test_dataset = IntheWild.InTheWildDataset(
+        base_dir=config.inTheWild_dataset_dir,
+        sr=16000,
+        n_mels=128,
+        precompute=False
     )
 
     # #Create a sampler for data balance
@@ -70,6 +77,7 @@ def main():
                                    optimal_threshold=config.optimal_threshold,
                                    epochs=config.n_epochs,
                                    learning_rate=config.learning_rate)
+   
     #FIne Tune Optimizer
     Optimizer.set_Optimizers(model_name=trainer.model_name, 
                              active_model=active_model,
@@ -77,7 +85,7 @@ def main():
                              config=config)
     
     trainer.RunEpochs(train_dataset=train_dataset,
-                      test_dataset=ASVspoof2021_test_dataset,
+                      test_dataset=InTheWild_test_dataset,
                       val_dataset=val_dataset,
                       n_epochs=config.n_epochs)
 
@@ -89,7 +97,7 @@ def main():
     config.highest_val_acc = trainer.best_valid_acc
     config.optimal_threshold = trainer.optimal_threshold
 
-    eval_metric =  evaluation.Evaluation_metric(Trainer=trainer,
+    eval_metric = evaluation.Evaluation_metric(Trainer=trainer,
                                  model=active_model,
                                  total_training_time=trainer.training_time,
                                  config=config,

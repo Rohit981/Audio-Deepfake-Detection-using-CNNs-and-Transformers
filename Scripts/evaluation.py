@@ -39,6 +39,7 @@ class Evaluation_metric:
         self.test_acc = config.test_acc
         self.batch_size = config.batch_size
         self.learning_rate = config.learning_rate
+        self.is_prefine_tuning = config.is_pre_finetuning
         self.metric_save_dir = r"D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Metric"
 
         self.forward()
@@ -115,8 +116,13 @@ class Evaluation_metric:
     
     #Save Leaderboard Metric
     def save_leaderboard_metric(self, eer_value, test_acc, roc_value):
+
         #Define json path and model name variable
-        json_path = "leaderboard_AfterFineTuning.json"
+        if self.is_prefine_tuning:
+            json_path = "leaderboard_PreFineTuning.json"
+        else:
+            json_path = "leaderboard_AfterFineTuning.json"
+
         model_name = self.model_name
 
         #Read existing JSON database if it exist
@@ -246,7 +252,7 @@ class Evaluation_metric:
 
     #Plot Speed vs Accuracy graph
     def Plot_Speed_Accuracy(self,
-                            json_path = "leaderboard_AfterFineTuning.json"):
+                            json_path):
         
         #Check if the file exist or not
         if not os.path.exists(json_path):
@@ -261,6 +267,8 @@ class Evaluation_metric:
         plt.figure(figsize=(12,5))
         plt.grid(True,which="both",ls="--", alpha=0.5)
 
+        #Track text label position to prevent overlapping
+        occupied_positions = []
     
         #Loop through every model present in the JSON file dynamically
         for model_name, metrics in leaderboard_data.items():
@@ -269,11 +277,11 @@ class Evaluation_metric:
 
             #Pull coordinates from the dict
             training_time = metrics.get("Training Time (s)", 0.0)
-            test_acc = metrics.get("Test Acc",0.0)*100 #Convert to percentage
+            test_eer = metrics.get("Test EER (%)",0.0) #Convert to percentage
             
 
             #Don't plot if the metrics are not recorded
-            if training_time == 0 or test_acc == 0:
+            if training_time == 0 or test_eer == 0:
                 continue
             
             # Choose distinctive publication markers and colors based on architecture type
@@ -287,22 +295,56 @@ class Evaluation_metric:
                 color, marker = 'dodgerblue', 'o'  # SWIN, VIT baselines
 
             #Plot Point
-            plt.scatter(training_time, test_acc, color=color,marker=marker, s=100, zorder=5)
+            plt.scatter(training_time, test_eer, color=color,marker=marker, s=100, zorder=5)
 
-            plt.annotate(f" {model_name}", (training_time, test_acc), 
-                         fontsize=9, 
+            #Dynamic Overlap offsets
+            x_offset = 10
+            y_offset = 0
+            current_ha = 'left'
+
+            #Collision threshold in the chart
+            x_collision_limit = 60.0
+            y_collision_limit = 0.4
+
+            #Check if this point crashes into any previously placed labels
+            for ox,oy in occupied_positions:
+                if abs(training_time - ox) < x_collision_limit and abs(test_eer - oy) < y_collision_limit:
+                    # Collision detected! Push this text label upward to clear the stack
+                    y_offset = -2
+                    x_offset = -12
+                    current_ha = 'right'
+                    break  # Found collision adjustments, break checking loop
+
+            #Log final text position
+            occupied_positions.append((training_time, test_eer))
+
+            plt.annotate(f" {model_name}", (training_time, test_eer), 
+                         xytext=(x_offset,y_offset),
+                         textcoords='offset points',
+                         fontsize=9.5, 
                          fontweight='bold' if "CNN" in model_name.upper() else 'normal',
-                         va='center', 
-                         ha='left')
+                         va='bottom' if y_offset > 0 else 'center', 
+                         ha=current_ha,
+                         zorder=6)
             
         #Graph customizations (lower training time means a faster model)
         plt.xlabel("Total Training Time (seconds)", fontsize=11, fontweight='bold')
-        plt.ylabel("Calibrated Test Accuracy (%)", fontsize=11, fontweight='bold')
+        plt.ylabel("Calibrated Test EER (%)", fontsize=11, fontweight='bold')
         plt.title("Performance vs. Training Efficiency Frontier", fontsize=12, fontweight='bold', pad=15)
+
+        # Extend the x-axis limits slightly to ensure trailing text labels aren't cut off at the edge
+        ax = plt.gca()
+        x_min, x_max = ax.get_xlim()
+        ax.set_xlim(x_min, x_max * 1.08)
         
         
         plt.tight_layout()
-        save_path = r'D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Graph\Speed_Vs_Accuracy_Frontier_AfterFineTuned.svg'
+
+        if self.is_prefine_tuning:
+            save_path = r'D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Graph\Speed_Vs_Accuracy_Frontier_PreFineTuning.svg'
+        else:
+            save_path = r'D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Graph\Speed_Vs_Accuracy_Frontier_AfterFineTuned.svg'
+
         plt.savefig(
             save_path, 
             dpi=300, 
@@ -368,7 +410,7 @@ class Evaluation_metric:
     
     def forward(self):
         #Call the evaluate function and pass the evaluation/test dataloader
-        test_loss, self.test_acc, test_f1, test_recall, test_preds, test_labels, test_probs,_ = self.trainer.evalModel(train_test_val="test")
+        test_loss, self.test_acc, test_f1, test_recall, test_preds, test_labels, test_probs,_, test_logits = self.trainer.evalModel(train_test_val="test")
         print(f"Raw Default Accuracy: {self.test_acc:.4f}")
 
         is_2019_validation = (self.trainer.train_test_val == "val") 
@@ -408,14 +450,14 @@ class Evaluation_metric:
                                 self.trainer.lr_history)
         
         #Plot ROC curve,AUC score and classification Report
-        self.roc_value, self.eer_value, self.optimal_threshold = self.ROC_AUC_Values(test_labels,test_probs, calibrate_threshold=is_2019_validation)
+        self.roc_value, self.eer_value, self.optimal_threshold = self.ROC_AUC_Values(test_labels,test_logits, calibrate_threshold=is_2019_validation)
 
         #Override self.test_acc with the true tuned accuracy!
         self.test_acc = self.classification_report['accuracy']
         print(f"Calibrated Test Accuracy: {self.test_acc:.4f}")
 
         # Generate the optimized Confusion Matrix using the tuned threshold
-        tuned_preds_tensor = torch.tensor([1 if p > self.optimal_threshold else 0 for p in test_probs])
+        tuned_preds_tensor = torch.tensor([1 if p > self.optimal_threshold else 0 for p in test_logits])
             
         #Calculate Confusion Matrix
         confusion_matrix = ConfusionMatrix(task='binary')

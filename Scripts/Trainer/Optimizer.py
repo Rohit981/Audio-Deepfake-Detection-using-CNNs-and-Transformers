@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from Trainer import ModelTrainer
 
 
-def get_swin_optimizer(model, base_lr = 2e-5, decay_rate=0.5):
+def get_swin_optimizer(model, base_lr = 1e-3, decay_rate=0.5):
     parameters_group = []
 
     #Patch embedding and early stages
@@ -24,6 +24,8 @@ def get_swin_optimizer(model, base_lr = 2e-5, decay_rate=0.5):
         list(model.norm.parameters())
     )
 
+    # print(f"Core Transformer List: {core_transformer_params}")
+
     parameters_group.append({
         "params" : core_transformer_params,
         "lr" : base_lr*decay_rate
@@ -35,37 +37,61 @@ def get_swin_optimizer(model, base_lr = 2e-5, decay_rate=0.5):
         "lr": base_lr # e.g., 1e-5
     })
     
-    optimizer = torch.optim.AdamW(parameters_group, weight_decay=0.05)
+    optimizer = torch.optim.AdamW(parameters_group, weight_decay=0.2)
     return optimizer
 
-def get_vit_or_deit_optimizer(model, base_lr=2e-5, decay_rate=0.5):
-    parameters_group = []
+def get_vit_or_deit_optimizer(model, base_lr=5e-6, decay_rate=0.5):
+    """
+    Dynamically groups custom VIT and DEIT parameters into three tiers securely:
+    Tier 1 (Lowest LR): Patch Embeddings, CLS/Dist Tokens, Positional Encodings
+    Tier 2 (Mid LR): Multi-Head Attention blocks, FFN paths, Layer Norms
+    Tier 3 (Base LR): Classification Head projections
+    """
+    tier1_params = []
+    tier2_params = []
+    tier3_params = []
     
-    # 1. Patch Embeddings & Positional Embeddings (Lowest LR)
-    embed_params = [p for n, p in model.named_parameters() if "patch_embed" in n or "pos_embed" in n or "cls_token" in n]
-    parameters_group.append({
-        "params": embed_params,
-        "lr": base_lr * (decay_rate ** 2)
-    })
+    # Establish a unique ID tracker to prevent duplicate registration crashes
+    memo = set()
     
-    # 2. Core Transformer Blocks (Intermediate LR)
-    # Note: For strict LLRD, you can decay layer-by-layer, but grouping all blocks works too.
-    body_params = [p for n, p in model.named_parameters() if "blocks" in n or "norm" in n]
-    parameters_group.append({
-        "params": body_params,
-        "lr": base_lr * decay_rate
-    })
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+            
+        name_lower = name.lower()
+        param_id = id(param)
+        
+        # 1. Target the final classification head projections securely (Tier 3)
+        if any(head_key in name_lower for head_key in ["fc", "head", "classifier", "fc_cls", "fc_dist"]):
+            if param_id not in memo:
+                tier3_params.append(param)
+                memo.add(param_id)
+                
+        # 2. Target early downsampling stems AND ALL POSITIONAL TOKENS safely (Tier 1)
+        elif any(stem_key in name_lower for stem_key in [
+            "patch", "embed", "pos", "cls_token", "dist_token", "proj"
+        ]):
+            if param_id not in memo:
+                tier1_params.append(param)
+                memo.add(param_id)
+                
+        # 3. Everything else falls into core processing blocks (Tier 2)
+        # Captures "encoder_layer", "multiHeaded", "positionalWise", and "layernorm" loops
+        else:
+            if param_id not in memo:
+                tier2_params.append(param)
+                memo.add(param_id)
+                
+    parameters_group = [
+        {"params": tier1_params, "lr": base_lr * (decay_rate ** 2)},
+        {"params": tier2_params, "lr": base_lr * decay_rate},
+        {"params": tier3_params, "lr": base_lr}
+    ]
     
-    # 3. Head (Highest LR)
-    head_params = [p for n, p in model.named_parameters() if "head" in n or "fc" in n]
-    parameters_group.append({
-        "params": head_params,
-        "lr": base_lr
-    })
     
-    return torch.optim.AdamW(parameters_group, weight_decay=0.08)
+    return torch.optim.AdamW(parameters_group, weight_decay=0.05)
 
-def get_generic_finetune_optimizer(model, base_lr=1e-5, decay_rate=0.5):
+def get_generic_finetune_optimizer(model, base_lr=5e-6, decay_rate=0.5):
     """
     Dynamically groups parameters into three tiers:
     Tier 1 (Lowest LR): Early feature extraction (CNN stems, patch embeddings)
@@ -79,13 +105,19 @@ def get_generic_finetune_optimizer(model, base_lr=1e-5, decay_rate=0.5):
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
+
+        name_lower = name.lower()
             
         # Target the final classification layers
-        if "fc" in name or "head" in name or "classifier" in name:
+        if any(head_key in name_lower for head_key in ["fc", "head", "classifier", "fc_cls", "fc_dist"]):
             tier3_params.append(param)
             
         # Target early downsampling stems (e.g., 'cnn_stem', 'patch_embed', 'conv1')
-        elif "patch_embed" in name or "stem" in name or "conv1" in name or "pos_embed" in name:
+        elif any(stem_key in name_lower for stem_key in [
+            "patch_embed", "stem", "conv1", "pos_embed", 
+            "positional_encoding", "positional_encoding.pe",
+            "feature_extractor", "cnn"
+        ]):
             tier1_params.append(param)
             
         # Everything else falls into the core block category (stages, blocks, bottlenecks)
@@ -98,28 +130,30 @@ def get_generic_finetune_optimizer(model, base_lr=1e-5, decay_rate=0.5):
         {"params": tier3_params, "lr": base_lr}
     ]
     
-    return torch.optim.AdamW(parameters_group, weight_decay=0.03)
+    return torch.optim.AdamW(parameters_group, weight_decay=0.01)
 
 def set_Optimizers(model_name, 
                    active_model,
                    trainer: ModelTrainer,
                    config : AudioConfig):
-    #Set Fine Tune Optimizer for Swin
-    if model_name == "SwinTransformer":
-        print("SWIN FINE TUNE OPTIMIZER")
-        fine_tune_optimizer = get_swin_optimizer(active_model)
-    elif model_name == "VIT" or model_name == "DEIT":
-        print("VIT OR DEIT FINE TUNE OPTIMIZER")
-        fine_tune_optimizer = get_vit_or_deit_optimizer(active_model)
-    else:
-        print("Other Models")
-        fine_tune_optimizer = get_generic_finetune_optimizer(active_model)
     
-    #Explicity override the default optimizer inside the trainer instance
-    trainer.optimizer = fine_tune_optimizer
+    # #Set Fine Tune Optimizer for all models
+    if config.is_pre_finetuning == False:
+        if model_name == "SwinTransformer_4_H" or model_name == "SwinTransformer_8_H":
+            print("SWIN FINE TUNE OPTIMIZER")
+            fine_tune_optimizer = get_swin_optimizer(active_model)
+        elif model_name == "VIT" or model_name == "DEIT":
+            print("VIT OR DEIT FINE TUNE OPTIMIZER")
+            fine_tune_optimizer = get_vit_or_deit_optimizer(active_model)
+        else:
+            print("Other Models")
+            fine_tune_optimizer = get_generic_finetune_optimizer(active_model)
+        
+        #Explicity override the default optimizer inside the trainer instance
+        trainer.optimizer = fine_tune_optimizer
 
     #Warup Setup Configuration
-    warmup_epochs = getattr(config, 'warmup_epochs', 5)
+    warmup_epochs = getattr(config, 'warmup_epochs', 2)
 
     total_epochs = config.n_epochs
 
@@ -128,6 +162,9 @@ def set_Optimizers(model_name,
             "warmup_epochs must be smaller than n_epochs"
         )
 
+    # steps_per_epoch = len(train_loader)
+    # warmup_steps = warmup_epochs * steps_per_epoch
+    # total_steps = config.n_epochs * steps_per_epoch
     if warmup_epochs > 0:
         print(f"Setting up {warmup_epochs} Warmup Epochs followed by Cosine Annealing")
 

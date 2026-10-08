@@ -1,0 +1,181 @@
+========================================
+INITIAL EVALUATION: SwinTransformer_4_H
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 100
+Training Time: 3614.99 seconds
+Highest Val Acc: 0.9802
+Default Test Acc: 0.8294
+Test ROC-AUC: 0.9748
+Test EER (%): 7.41%
+Optimal Threshold: 0.999254
+Batch Size: 32
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 1797.67 seconds
+Highest Val Acc: 0.9889
+Default Test Acc: 0.5919
+Test ROC-AUC: 0.9664
+Test EER (%): 9.03%
+Optimal Threshold: 0.999725
+Batch Size: 64
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 900.66 seconds
+Highest Val Acc: 0.9865
+Default Test Acc: 0.7409
+Test ROC-AUC: 0.9797
+Test EER (%): 6.75%
+Optimal Threshold: 0.999165
+Batch Size: 64
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 635.33 seconds
+Highest Val Acc: 0.9704
+Default Test Acc: 0.6058
+Test ROC-AUC: 0.9756
+Test EER (%): 7.54%
+Optimal Threshold: 0.999599
+Batch Size: 64
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 603.94 seconds
+Highest Val Acc: 0.9709
+Default Test Acc: 0.5986
+Test ROC-AUC: 0.9715
+Test EER (%): 8.31%
+Optimal Threshold: 0.999976
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 979.59 seconds
+Highest Val Acc: 0.9810
+Default Test Acc: 0.7594
+Test ROC-AUC: 0.9770
+Test EER (%): 7.44%
+Optimal Threshold: 0.999508
+Batch Size: 128
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 391.55 seconds
+Highest Val Acc: 0.9971
+Default Test Acc: 0.6153
+Test ROC-AUC: 0.9839
+Test EER (%): 5.97%
+Optimal Threshold: 0.997042
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 514.25 seconds
+Highest Val Acc: 0.9802
+Default Test Acc: 0.9184
+Test ROC-AUC: 0.9826
+Test EER (%): 5.97%
+Optimal Threshold: 0.368108
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 1143.08 seconds
+Highest Val Acc: 0.9986
+Default Test Acc: 0.4918
+Test ROC-AUC: 0.8972
+Test EER (%): 20.16%
+Optimal Threshold: 0.994290
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 271.37 seconds
+Highest Val Acc: 0.9896
+Default Test Acc: 0.4409
+Test ROC-AUC: 0.8876
+Test EER (%): 20.83%
+Optimal Threshold: 0.999295
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 851.83 seconds
+Highest Val Acc: 0.9666
+Default Test Acc: 0.3403
+Test ROC-AUC: 0.2772
+Test EER (%): 67.86%
+Optimal Threshold: 0.823092
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 452.85 seconds
+Highest Val Acc: 0.9964
+Default Test Acc: 0.3522
+Test ROC-AUC: 0.3577
+Test EER (%): 61.36%
+Optimal Threshold: 0.993569
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_4_H
+Epochs: 500
+Training Time: 278.55 seconds
+Highest Val Acc: 0.9873
+Default Test Acc: 0.3685
+Test ROC-AUC: 0.3059
+Test EER (%): 64.40%
+Optimal Threshold: 0.999471
+Batch Size: 512
+Learning Rate: 0.0001

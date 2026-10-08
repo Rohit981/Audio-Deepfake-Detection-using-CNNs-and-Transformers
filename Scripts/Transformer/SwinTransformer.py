@@ -302,7 +302,12 @@ class Swin(nn.Module):
                  dropout_rate=0.1,
                  max_dpr=0.1):
         super().__init__()
-        self.architecture_name = "SwinTransformer"
+
+        if config.n_heads == 4:
+            self.architecture_name = "SwinTransformer_4_H"
+        else:
+            self.architecture_name = "SwinTransformer_8_H"
+
         self.d_model = config.d_model
         win = 8
         self.patch_embed = nn.Conv2d(1,self.d_model, kernel_size=4,stride=4)

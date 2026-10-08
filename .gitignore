@@ -3,3 +3,6 @@ Datasets/
 .txt
 .cache
 Models/
+venv_stable/
+Old Checkpoints/
+Top Checkpoints/

@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
 from Transformer.TransformerModel import MultiHeadAttention, PositionalEncoding, PositionWiseFeedForward
+from Transformer.SwinTransformer import DropPath
 from config import AudioConfig
 
 class CNN(nn.Module):
     def __init__(self, 
                  input_dim, 
                  layer_channels, 
-                 dropout_value=0.2):
+                 dropout_value=0.1):
         super().__init__()
         #Initialize Input and Output
         self.input_dim = input_dim
@@ -53,7 +54,8 @@ class EncoderBlock(nn.Module):
                  d_model, 
                  num_heads,
                  d_ff, 
-                 dropout_value=0.3):
+                 dropout_value=0.1,
+                 drop_prob=0.1):
         super().__init__()
 
         #First Layer which is Multiheaded and Layer Norm
@@ -64,6 +66,8 @@ class EncoderBlock(nn.Module):
         self.positionalWise = PositionWiseFeedForward(d_model,d_ff)
         self.norm2 = nn.LayerNorm(d_model)
 
+        #Regualization
+        self.drop_path = DropPath(drop_prob)
         self.dropout = nn.Dropout(dropout_value)
     
     def forward(self,x):
@@ -71,11 +75,11 @@ class EncoderBlock(nn.Module):
         attn_output = self.attention(x,x,x,mask=None)
 
         #Adding to the original output for residual connection
-        x = self.norm1(x + self.dropout(attn_output))
+        x = self.norm1(x + self.drop_path(self.dropout(attn_output)))
 
         #Calculate Feed Forward
         ff_output = self.positionalWise(x)
-        x = self.norm2(x + self.dropout(ff_output))
+        x = self.norm2(x + self.drop_path(self.dropout(ff_output)))
         return x
 
 #Transformer Layer uses the encoder block and does classification
@@ -85,18 +89,25 @@ class TransformerLayer(nn.Module):
                  n_heads, 
                  num_layers,
                  d_ff,
-                 num_classes):
+                 num_classes,
+                 max_drop=0.1):
         super().__init__()
         
         #Positional Encoding class
         self.positional_encoding = PositionalEncoding(d_model,max_seq_length=256)
         self.dropout = nn.Dropout(0.1)
 
+        #Drop Path
+        drop_path_rate = [x.item() for x in torch.linspace(0.0, max_drop, num_layers)]
+
         #Sequential stack of encoder layers and d_ff = d_model X 4
         self.encoder_layers = nn.ModuleList([
-            EncoderBlock(d_model,n_heads,d_ff)
-            for _ in range(num_layers)
+            EncoderBlock(d_model,n_heads,d_ff, drop_prob=drop_path_rate[i])
+            for i in range(num_layers)
         ])
+
+        #Introduce an explicit high regularisation dropout guard for the final head
+        self.classification_dropout = nn.Dropout(0.4)
 
         #Classification Head outputing 1 logit for BCELogitLoss
         self.fc = nn.Linear(d_model,num_classes)
@@ -114,6 +125,7 @@ class TransformerLayer(nn.Module):
         x = x.mean(dim=1) # Shape: [Batch, 128]
 
         #Final Projection layer for classification
+        x = self.classification_dropout(x)
         x = self.fc(x)
         return x
 

@@ -627,3 +627,31 @@ Test EER (%): 58.36%
 Optimal Threshold: 0.999955
 Batch Size: 512
 Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_8_H
+Epochs: 500
+Training Time: 496.38 seconds
+Highest Val Acc: 0.9816
+Default Test Acc: 0.3875
+Test ROC-AUC: 0.4235
+Test EER (%): 55.63%
+Optimal Threshold: 0.998932
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: SwinTransformer_8_H
+Epochs: 500
+Training Time: 800.23 seconds
+Highest Val Acc: 0.9321
+Default Test Acc: 0.3753
+Test ROC-AUC: 0.3659
+Test EER (%): 60.62%
+Optimal Threshold: 0.347875
+Batch Size: 512
+Learning Rate: 0.0001

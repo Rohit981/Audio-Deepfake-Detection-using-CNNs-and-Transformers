@@ -1,5 +1,6 @@
 from DataSets import ASVspoof2019,ASVspoof2021DF, IntheWild
 import os
+import torch
 from Resnet50 import CustomResnet50
 from Trainer import Trainer, Optimizer
 import torch.nn as nn  
@@ -9,13 +10,13 @@ from config import AudioConfig
 from Utils.Leaderboard import ResultLeaderboard
 
 
-os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
+# os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
 def main():
 
     #Initialize Config class
     config = AudioConfig()
-    
+  
     #Set Randoom seed
     config.set_seed(123)
 
@@ -62,7 +63,7 @@ def main():
     deit = DEIT.DEIT(config)
     
     #Track of active model
-    active_model = swin    
+    active_model = CNN_Transformer    
 
     #Initialize Trainer and run the epochs
     trainer = Trainer.ModelTrainer(model=active_model, 

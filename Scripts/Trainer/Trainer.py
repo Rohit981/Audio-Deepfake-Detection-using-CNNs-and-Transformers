@@ -468,7 +468,7 @@ class ModelTrainer(nn.Module):
 
 
         self.train_loader = dataloader.DataLoader(train_set, batch_size=self.batch_size,sampler=self.sampler, num_workers=0, pin_memory=True)
-        self.test_loader = dataloader.DataLoader(test_set, batch_size=self.batch_size, shuffle=False, num_workers=0)
+        self.test_loader = dataloader.DataLoader(test_set, batch_size=self.batch_size, shuffle=False, num_workers=2)
         self.val_loader = dataloader.DataLoader(val_set, batch_size=self.batch_size, shuffle=False, num_workers=0)
     
     #Compute EER 
@@ -636,7 +636,7 @@ class ModelTrainer(nn.Module):
             #     X = X.squeeze(1)
             
             #Set X and Y to device
-            X,Y = X.to(self.device, non_blocking=True), Y.to(self.device, non_blocking=True)
+            X,Y = X.to(self.device), Y.to(self.device)
 
             with torch.no_grad():
                 X = self.augmentation.forward(X)

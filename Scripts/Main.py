@@ -1,5 +1,4 @@
-from DataSets import ASVspoof2019,ASVspoof2021DF, IntheWild
-import os
+from DataSets import ASVspoof2019,ASVspoof2021DF, IntheWild, WaveFake_Dataset
 import torch
 from Resnet50 import CustomResnet50
 from Trainer import Trainer, Optimizer
@@ -8,7 +7,6 @@ from Transformer import CnnTrasnformer,VisionTransformer,SwinTransformer, DEIT
 import evaluation
 from config import AudioConfig
 from Utils.Leaderboard import ResultLeaderboard
-
 
 # os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
@@ -34,12 +32,20 @@ def main():
         ram_cache=False
     )
 
-    InTheWild_test_dataset = IntheWild.InTheWildDataset(
-        base_dir=config.inTheWild_dataset_dir,
-        sr=16000,
-        n_mels=128,
-        precompute=False
-    )
+    # InTheWild_test_dataset = IntheWild.InTheWildDataset(
+    #     base_dir=config.inTheWild_dataset_dir,
+    #     sr=16000,
+    #     n_mels=128,
+    #     precompute=False
+    # )
+
+    # WaveFake_test_dataset = WaveFake_Dataset.WaveFakeLJSpeechDataset(
+    #     config=config,
+    #     sr=16000,
+    #     n_mels=128,
+    #     precompute=False,
+    #     ram_caching=True
+    # )
 
     # #Create a sampler for data balance
     sampler = train_dataset.data_balancing(train_dataset)
@@ -63,7 +69,7 @@ def main():
     deit = DEIT.DEIT(config)
     
     #Track of active model
-    active_model = CNN_Transformer    
+    active_model = deit    
 
     #Initialize Trainer and run the epochs
     trainer = Trainer.ModelTrainer(model=active_model, 
@@ -86,7 +92,7 @@ def main():
                              config=config)
     
     trainer.RunEpochs(train_dataset=train_dataset,
-                      test_dataset=InTheWild_test_dataset,
+                      test_dataset=ASVspoof2021_test_dataset,
                       val_dataset=val_dataset,
                       n_epochs=config.n_epochs)
 

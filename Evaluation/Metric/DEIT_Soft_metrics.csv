@@ -869,3 +869,241 @@ Test EER (%): 67.15%
 Optimal Threshold: 0.521876
 Batch Size: 512
 Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 123.09 seconds
+Highest Val Acc: 0.9936
+Default Test Acc: 0.5034
+Test ROC-AUC: 0.5368
+Test EER (%): 47.34%
+Optimal Threshold: 0.759371
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 320.65 seconds
+Highest Val Acc: 0.9943
+Default Test Acc: 0.5060
+Test ROC-AUC: 0.5325
+Test EER (%): 47.74%
+Optimal Threshold: 0.928745
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 173.74 seconds
+Highest Val Acc: 0.9940
+Default Test Acc: 0.5063
+Test ROC-AUC: 0.5332
+Test EER (%): 47.72%
+Optimal Threshold: 0.934064
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 86.08 seconds
+Highest Val Acc: 0.9969
+Default Test Acc: 0.8241
+Test ROC-AUC: 0.9625
+Test EER (%): 9.53%
+Optimal Threshold: 0.877294
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 213.62 seconds
+Highest Val Acc: 0.9854
+Default Test Acc: 0.8603
+Test ROC-AUC: 0.9641
+Test EER (%): 9.79%
+Optimal Threshold: 0.698324
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 105.99 seconds
+Highest Val Acc: 0.9884
+Default Test Acc: 0.8040
+Test ROC-AUC: 0.9636
+Test EER (%): 9.83%
+Optimal Threshold: 0.893482
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 106.80 seconds
+Highest Val Acc: 0.9963
+Default Test Acc: 0.7633
+Test ROC-AUC: 0.9626
+Test EER (%): 9.91%
+Optimal Threshold: 0.933584
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 123.87 seconds
+Highest Val Acc: 0.9955
+Default Test Acc: 0.7565
+Test ROC-AUC: 0.9648
+Test EER (%): 9.58%
+Optimal Threshold: 0.953409
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 129.30 seconds
+Highest Val Acc: 0.9945
+Default Test Acc: 0.7516
+Test ROC-AUC: 0.9641
+Test EER (%): 9.63%
+Optimal Threshold: 0.952252
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 87.78 seconds
+Highest Val Acc: 0.9967
+Default Test Acc: 0.7147
+Test ROC-AUC: 0.8328
+Test EER (%): 24.93%
+Optimal Threshold: 0.952288
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 85.91 seconds
+Highest Val Acc: 0.9967
+Default Test Acc: 0.3560
+Test ROC-AUC: 0.3993
+Test EER (%): 56.71%
+Optimal Threshold: 0.952621
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 85.12 seconds
+Highest Val Acc: 0.9967
+Default Test Acc: 0.3562
+Test ROC-AUC: 0.3994
+Test EER (%): 56.69%
+Optimal Threshold: 0.952860
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 85.10 seconds
+Highest Val Acc: 0.9967
+Default Test Acc: 0.5059
+Test ROC-AUC: 0.5980
+Test EER (%): 43.37%
+Optimal Threshold: 0.953251
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 85.22 seconds
+Highest Val Acc: 0.9967
+Default Test Acc: 0.5059
+Test ROC-AUC: 0.5981
+Test EER (%): 43.37%
+Optimal Threshold: 0.953306
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 85.62 seconds
+Highest Val Acc: 0.9967
+Default Test Acc: 0.3569
+Test ROC-AUC: 0.3997
+Test EER (%): 56.69%
+Optimal Threshold: 0.953703
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 86.15 seconds
+Highest Val Acc: 0.9967
+Default Test Acc: 0.7130
+Test ROC-AUC: 0.8327
+Test EER (%): 24.92%
+Optimal Threshold: 0.953760
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: DEIT_Soft
+Epochs: 500
+Training Time: 90.74 seconds
+Highest Val Acc: 0.9967
+Default Test Acc: 0.7125
+Test ROC-AUC: 0.8327
+Test EER (%): 24.92%
+Optimal Threshold: 0.954065
+Batch Size: 512
+Learning Rate: 0.0001

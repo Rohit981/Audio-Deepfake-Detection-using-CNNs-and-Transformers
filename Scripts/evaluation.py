@@ -355,41 +355,86 @@ class Evaluation_metric:
         print("Dynamic 'speed_vs_accuracy_frontier.png' successfully refreshed from JSON file!")
    
     #Calculate the ROC and AUC values
-    def ROC_AUC_Values(self,y_true,y_probs, calibrate_threshold=False):
+    def ROC_AUC_Values(self,y_true,y_probs, y_logits, calibrate_threshold=False):
+
+        y_true = np.asarray(y_true).astype(int).reshape(-1)
+        y_probs = np.asarray(y_probs, dtype=np.float64).reshape(-1)
+        y_logits = np.asarray(y_logits, dtype=np.float64).reshape(-1)
+
+        if not (
+        len(y_true) == len(y_probs) == len(y_logits)
+        ):
+            raise ValueError(
+                "Labels, probabilities, and logits must have equal lengths."
+            )
+
+        if not np.isfinite(y_logits).all():
+            raise ValueError("Non-finite logits detected.")
+
+
         #Calculate the ROC curve coordinates
-        fpr, tpr, thresholds = roc_curve(y_true,y_probs,pos_label=1)
+        fpr, tpr, logit_threshold = roc_curve(y_true,y_logits,pos_label=1)
         fnr = 1 - tpr
 
         #Locate the intersection point where FPR ~= FNR
         idx = np.nanargmin(np.absolute(fpr - fnr))
         eer = (fpr[idx] + fnr[idx]) / 2
-
-        if calibrate_threshold:
-            self.optimal_threshold = thresholds[idx]
-            print(f" NEW Optimal Decision Threshold Calibrated: {self.optimal_threshold:.6f}")
-        else:
-            # Maintain the value brought over from the ASVspoof 2019 Validation phase
-            print(f" Using Pre-calibrated Frozen Threshold: {self.optimal_threshold:.6f}")
-
+        eer_logit_threshold = logit_threshold[idx]
 
         #Calculate ROC AUC Score
-        auc_score = roc_auc_score(y_true,y_probs)
+        auc_score = roc_auc_score(y_true,y_logits)
         print(f"ROC AUC Score:{auc_score:.4f}")
 
-        print("\n" + "="*40)
-        print(f" Equal Error Rate (EER): {eer * 100:.2f}%")
-        print(f" Optimal Decision Threshold: {self.optimal_threshold:.6f}")
-        print("="*40 + "\n")
+        print(f"ROC-AUC (raw logits): {auc_score:.4f}")
+        print(f"EER: {eer * 100:.2f}%")
+        print(f"Optimal Threshold: {self.optimal_threshold:.6f}")
+        print(
+            f"EER threshold (raw logit): "
+            f"{eer_logit_threshold:.6f}"
+        )
         
         #Apply the optimal threshold to map new predictions
-        tuned_preds = [1 if p > self.optimal_threshold else 0 for p in y_probs]
+        # tuned_preds = [1 if p > self.optimal_threshold else 0 for p in y_probs]
+
+        if calibrate_threshold:
+            fpr_p, tpr_p, prob_thresholds = roc_curve(
+                y_true, y_probs, pos_label=1
+            )
+
+            fnr_p = 1.0 - tpr_p
+            idx_p = np.nanargmin(np.abs(fpr_p - fnr_p))
+
+            self.optimal_threshold = prob_thresholds[idx_p]
+
+            print(
+                "Calibrated validation probability threshold:",
+                f"{self.optimal_threshold:.6f}"
+            )
+
+        # Preserve the frozen threshold selected using ASVspoof2019 validation.
+        frozen_probability_threshold = float(self.optimal_threshold)
+
+        print(
+            "Frozen ASVspoof2019 probability threshold:",
+            f"{frozen_probability_threshold:.6f}"
+        )
+
+        # This classification report uses the frozen probability threshold.
+        # It is NOT an EER-threshold classification report.
+        frozen_preds = (
+            y_probs >= frozen_probability_threshold
+        ).astype(int)
+
+        print("\nClassification Report at Frozen Threshold:")
         
         #Generate the adjusted report
         print("Tuned Classification Report:")
         self.classification_report = classification_report(y_true, 
-                                                           tuned_preds, 
+                                                           frozen_preds,
+                                                           labels=[0,1], 
                                                            target_names=['bonafide', 'spoof'],
-                                                           output_dict=True)
+                                                           output_dict=True,
+                                                           zero_division=0)
         print(self.classification_report)
 
         #Plot the ROC curve
@@ -450,14 +495,27 @@ class Evaluation_metric:
                                 self.trainer.lr_history)
         
         #Plot ROC curve,AUC score and classification Report
-        self.roc_value, self.eer_value, self.optimal_threshold = self.ROC_AUC_Values(test_labels,test_logits, calibrate_threshold=is_2019_validation)
+        self.roc_value, self.eer_value, self.optimal_threshold = self.ROC_AUC_Values(test_labels,test_probs,test_logits,calibrate_threshold=is_2019_validation)
+
+        scores = np.asarray(test_logits).reshape(-1)
+        labels = np.asarray(test_labels).astype(int)
+
+        for label, name in [(0, "Bona-fide"), (1, "Spoof")]:
+            s = scores[labels == label]
+
+            print(f"\n{name}")
+            print("Mean:", s.mean())
+            print("Std:", s.std())
+            print("Min:", s.min())
+            print("Median:", np.median(s))
+            print("Percentiles:", np.percentile(s, [5, 25, 50, 75, 95]))
 
         #Override self.test_acc with the true tuned accuracy!
         self.test_acc = self.classification_report['accuracy']
         print(f"Calibrated Test Accuracy: {self.test_acc:.4f}")
 
         # Generate the optimized Confusion Matrix using the tuned threshold
-        tuned_preds_tensor = torch.tensor([1 if p > self.optimal_threshold else 0 for p in test_logits])
+        tuned_preds_tensor = torch.tensor([1 if p > self.optimal_threshold else 0 for p in test_probs])
             
         #Calculate Confusion Matrix
         confusion_matrix = ConfusionMatrix(task='binary')

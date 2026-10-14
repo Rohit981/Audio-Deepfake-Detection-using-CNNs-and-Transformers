@@ -172,10 +172,10 @@ class ModelTrainer(nn.Module):
 
     
         #Intialize Augmentation class for X data
-        self.augmentation = ASVspoof2019.Augmentation(frequency_mask_param=24,
-                                         time_mask_param=24,
-                                         noise_prob=0.5,
-                                         compression_prob=0.7)
+        self.augmentation = ASVspoof2019.Augmentation(frequency_mask_param=15,
+                                         time_mask_param=10,
+                                         noise_prob=0.2,
+                                         compression_prob=0.0)
 
     #Monitor Swin transformer attention values
     def monitor_swin_attention(self):
@@ -468,7 +468,7 @@ class ModelTrainer(nn.Module):
 
 
         self.train_loader = dataloader.DataLoader(train_set, batch_size=self.batch_size,sampler=self.sampler, num_workers=0, pin_memory=True)
-        self.test_loader = dataloader.DataLoader(test_set, batch_size=self.batch_size, shuffle=False, num_workers=2)
+        self.test_loader = dataloader.DataLoader(test_set, batch_size=self.batch_size, shuffle=False, num_workers=8)
         self.val_loader = dataloader.DataLoader(val_set, batch_size=self.batch_size, shuffle=False, num_workers=0)
     
     #Compute EER 

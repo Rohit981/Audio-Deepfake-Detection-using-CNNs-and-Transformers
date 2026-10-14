@@ -1,41 +1,41 @@
 {
     "Resnet50": {
-        "timestamp": "2026-10-09 13:51:58",
+        "timestamp": "2026-10-13 15:48:33",
         "Classification Report": {
             "bonafide": {
-                "precision": 0.48675365757216293,
-                "recall": 0.06166407854530882,
-                "f1-score": 0.10946114173928508,
-                "support": 19963.0
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1-score": 0.0,
+                "support": 13100.0
             },
             "spoof": {
-                "precision": 0.3595897435897436,
-                "recall": 0.8901489505754908,
-                "f1-score": 0.5122485754638874,
-                "support": 11816.0
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1-score": 0.6666666666666666,
+                "support": 13100.0
             },
-            "accuracy": 0.36970955662544447,
+            "accuracy": 0.5,
             "macro avg": {
-                "precision": 0.42317170058095327,
-                "recall": 0.47590651456039984,
-                "f1-score": 0.31085485860158624,
-                "support": 31779.0
+                "precision": 0.25,
+                "recall": 0.5,
+                "f1-score": 0.3333333333333333,
+                "support": 26200.0
             },
             "weighted avg": {
-                "precision": 0.4394718422974134,
-                "recall": 0.36970955662544447,
-                "f1-score": 0.2592247062595626,
-                "support": 31779.0
+                "precision": 0.25,
+                "recall": 0.5,
+                "f1-score": 0.33333333333333326,
+                "support": 26200.0
             }
         },
         "Confusion Matrix": [
             [
-                1231,
-                1298
+                0,
+                0
             ],
             [
-                18732,
-                10518
+                13100,
+                13100
             ]
         ]
     }

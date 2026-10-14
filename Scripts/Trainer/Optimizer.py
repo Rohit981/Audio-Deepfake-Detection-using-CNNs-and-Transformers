@@ -89,7 +89,7 @@ def get_vit_or_deit_optimizer(model, base_lr=5e-6, decay_rate=0.5):
     ]
     
     
-    return torch.optim.AdamW(parameters_group, weight_decay=0.05)
+    return torch.optim.AdamW(parameters_group, weight_decay=0.01)
 
 def get_generic_finetune_optimizer(model, base_lr=5e-6, decay_rate=0.5):
     """
@@ -142,7 +142,7 @@ def set_Optimizers(model_name,
         if model_name == "SwinTransformer_4_H" or model_name == "SwinTransformer_8_H":
             print("SWIN FINE TUNE OPTIMIZER")
             fine_tune_optimizer = get_swin_optimizer(active_model)
-        elif model_name == "VIT" or model_name == "DEIT":
+        elif model_name == "VIT" or model_name == "DEIT_Hard" or model_name == "DEIT_Soft" :
             print("VIT OR DEIT FINE TUNE OPTIMIZER")
             fine_tune_optimizer = get_vit_or_deit_optimizer(active_model)
         else:

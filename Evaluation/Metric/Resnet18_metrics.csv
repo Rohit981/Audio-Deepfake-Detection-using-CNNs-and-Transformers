@@ -939,3 +939,17 @@ Test EER (%): 51.48%
 Optimal Threshold: 0.942674
 Batch Size: 512
 Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: Resnet18
+Epochs: 500
+Training Time: 134.19 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.5002
+Test ROC-AUC: 0.4808
+Test EER (%): 51.51%
+Optimal Threshold: 0.975729
+Batch Size: 512
+Learning Rate: 0.0001

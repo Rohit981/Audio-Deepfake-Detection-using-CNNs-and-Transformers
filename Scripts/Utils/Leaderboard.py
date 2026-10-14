@@ -19,7 +19,7 @@ class ResultLeaderboard:
         if config.is_pre_finetuning:
             self.csv_path = os.path.join(self.leaderboard_dir, "Leaderboard_PreFineTuning.csv")
         else:
-            self.csv_path = os.path.join(self.leaderboard_dir, "InTheWild_Leaderboard.csv")
+            self.csv_path = os.path.join(self.leaderboard_dir, "ASVspoof2021DF_Leaderboard.csv")
 
         self.json_path = os.path.join(self.classification_dir, f"{model_name}_Confusion&Classification_Report.json")
 

@@ -14,6 +14,9 @@ class AudioConfig:
      classification_savedir : str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Evaluation\Metric\Confusion&Classification Report"
      ASVspoof2021_test_dir: str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Datasets\asvspoof2021 DF"
      inTheWild_dataset_dir: str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Datasets\release_in_the_wild"
+     wakeFake_realDataset_dir: str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Datasets\LJSpeech-1.1\wavs"
+     wakeFake_fakeDataset_dir: str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Datasets\WaveFake_Dataset\ljspeech_melgan"
+     wakeFake_SaveDataset_dir: str = r"D:\Deep Neural Network\ML-Audio_DeepFake\Datasets\WaveFake_Dataset\Precompute\WaveFake_LJSpeech_MelGAN"
 
      #----------------------LeaderBoard Metrics--------------------------
      highest_val_acc: float = None

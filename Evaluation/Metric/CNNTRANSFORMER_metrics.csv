@@ -1679,3 +1679,87 @@ Test EER (%): 52.04%
 Optimal Threshold: 0.806263
 Batch Size: 512
 Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: CNNTRANSFORMER
+Epochs: 500
+Training Time: 188.47 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.5000
+Test ROC-AUC: 0.6479
+Test EER (%): 39.63%
+Optimal Threshold: 0.941302
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: CNNTRANSFORMER
+Epochs: 500
+Training Time: 188.66 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.5000
+Test ROC-AUC: 0.6475
+Test EER (%): 39.55%
+Optimal Threshold: 0.931182
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: CNNTRANSFORMER
+Epochs: 500
+Training Time: 188.63 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.5000
+Test ROC-AUC: 0.6484
+Test EER (%): 39.64%
+Optimal Threshold: 0.919694
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: CNNTRANSFORMER
+Epochs: 500
+Training Time: 189.99 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.5000
+Test ROC-AUC: 0.6486
+Test EER (%): 39.65%
+Optimal Threshold: 0.906547
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: CNNTRANSFORMER
+Epochs: 500
+Training Time: 188.49 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.5000
+Test ROC-AUC: 0.6489
+Test EER (%): 39.60%
+Optimal Threshold: 0.892016
+Batch Size: 512
+Learning Rate: 0.0001
+
+========================================
+NEXT TRIAL RUN STATISTICS:
+========================================
+Model Name: CNNTRANSFORMER
+Epochs: 500
+Training Time: 208.49 seconds
+Highest Val Acc: 0.9998
+Default Test Acc: 0.5000
+Test ROC-AUC: 0.6735
+Test EER (%): 37.54%
+Optimal Threshold: 0.922171
+Batch Size: 512
+Learning Rate: 0.0001

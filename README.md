@@ -128,28 +128,36 @@ Phase III
 
 ## 📊 Results
 
-The final models were evaluated on the **ASVspoof2019 Logical Access (LA) evaluation set** using **Test Accuracy**, **ROC-AUC**, and **Equal Error Rate (EER)**. Lower EER indicates better spoof detection performance.
+The final models were evaluated on the ASVspoof2019 Logical Access (LA) evaluation set using Test Accuracy, ROC-AUC, and Equal Error Rate (EER). Models are ranked by EER, with lower values indicating better detection performance.
 
 | Rank | Model | Test Accuracy | ROC-AUC | EER ↓ |
-|:---:|:------------------|:------------:|:-------:|:------:|
-| 🥇 | **Swin Transformer** | **92.85%** | 0.9767 | **7.14%** |
-| 🥈 | **ResNet50** | **92.85%** | **0.9797** | 7.15% |
-| 🥉 | **ResNet18** | 92.34% | **0.9825** | 7.65% |
-| 4 | **CNN-Transformer** | 92.11% | 0.9800 | 7.89% |
-| 5 | **Vision Transformer (ViT)** | 91.67% | 0.9689 | 8.32% |
-| 6 | **DeiT-Hard** | 90.04% | 0.9620 | 9.97% |
-| 7 | **DeiT-Soft** | 89.25% | 0.9535 | 10.75% |
+|:---:|:--------------------------|:------------:|:-------:|:------:|
+| 🥇 | **Swin Transformer 8H** | **91.95%** | 0.9844 | **5.86%** |
+| 🥈 | **Swin Transformer 4H** | 91.84% | 0.9826 | 5.97% |
+| 🥉 | **ResNet18** | 82.23% | 0.9864 | 6.01% |
+| 4 | **ResNet50** | 84.55% | **0.9873** | 6.47% |
+| 5 | **CNN-Transformer** | 57.40% | 0.9800 | 6.70% |
+| 6 | **DeiT-Soft** | 90.50% | 0.9726 | 8.21% |
+| 7 | **DeiT-Hard** | 80.07% | 0.9718 | 8.76% |
+| 8 | **Vision Transformer (ViT)** | 81.68% | 0.9585 | 10.39% |
 
-> **Note:** Results correspond to the **best coherent evaluation checkpoints** obtained after architecture-specific fine-tuning. Model selection was based on agreement between **Equal Error Rate (EER)**, **ROC-AUC**, **classification accuracy**, and additional diagnostic analyses to avoid misleading results caused by optimization instability.
+> **Note:** Results correspond to the reported fine-tuned evaluation runs. The leaderboard is ranked by EER, while ROC-AUC measures score-ranking discrimination and accuracy depends on the applied decision threshold. These metrics should be interpreted together, particularly where substantial discrepancies occur.
 
 ## Key Findings
 
-- Swin Transformer achieved the lowest observed EER after architecture correction.
-- ResNet50 remained the strongest CNN baseline.
-- Aggressive fine-tuning produced misleadingly low EER values in some checkpoints.
-- Cross-validation using ROC-AUC, confusion matrices, and activation statistics proved essential for reliable model evaluation.
-- Layer-wise activation tracing identified numerical instability within the custom Swin implementation.
+- Swin Transformer 8H achieved the lowest EER: The eight-head configuration recorded an EER of 5.86%, a test accuracy of 91.95%, and a ROC-AUC of 0.9844, producing the strongest overall result by EER.
 
+- Swin Transformer 4H demonstrated comparable performance: With an EER of 5.97% and an accuracy of 91.84%, the four-head configuration performed almost identically to the eight-head variant under the evaluated conditions.
+
+- ResNet architectures remained highly competitive: ResNet18 achieved an EER of 6.01%, while ResNet50 achieved the highest ROC-AUC of 0.9873. This demonstrates that convolutional architectures remain strong baselines for spectrogram-based audio deepfake detection.
+
+- Fine-tuning changed the architectural rankings: The Swin Transformer variants moved ahead of the residual networks in EER, illustrating that the relative performance of the architectures depended on the training and fine-tuning configuration.
+
+- Accuracy and ranking metrics must be interpreted together: The CNN–Transformer achieved an EER of 6.70% and a ROC-AUC of 0.9800, but its test accuracy was only 57.40%. This discrepancy warrants further verification of the checkpoint, score convention, and decision threshold before its operational performance can be established.
+
+- Metric validation was essential: Investigation of anomalous checkpoints highlighted the importance of examining ROC-AUC, EER, confusion matrices, score distributions, and model activations together rather than relying on a single reported metric.
+  
+Overall, the fine-tuned results identify the Swin Transformer 8H as the leading architecture by EER, with Swin Transformer 4H and ResNet18 close behind. The results also demonstrate that CNNs remain competitive and that robust model selection requires careful validation of both threshold-independent discrimination and threshold-dependent classification performance.
 ## Future Work
 
 - BEATs

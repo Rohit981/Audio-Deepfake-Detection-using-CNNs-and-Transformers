@@ -164,7 +164,7 @@ The final models were evaluated on the ASVspoof2019 Logical Access (LA) evaluati
 
 The following table compares all eight architectures across ASVspoof2019 LA, ASVspoof2021 DF, WaveFake (LJSpeech–MelGAN), and In-the-Wild.
 
-Each cell reports **EER**, respectively. Models are evaluated using their reported fine-tuned checkpoints. Lower EER and generally indicate better discrimination.
+Each cell reports the Equal Error Rate (EER) for the corresponding dataset. Lower EER indicates better performance at the equal-error operating point.
 
 | Model | ASVspoof2019 LA | ASVspoof2021 DF | WaveFake | In-the-Wild |
 |:---|:---:|:---:|:---:|:---:|

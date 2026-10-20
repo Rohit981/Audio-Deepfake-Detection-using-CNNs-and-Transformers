@@ -142,6 +142,24 @@ The final models were evaluated on the ASVspoof2019 Logical Access (LA) evaluati
 | 8 | **Vision Transformer (ViT)** | 81.68% | 0.9585 | 10.39% |
 
 > **Note:** Results correspond to the reported fine-tuned evaluation runs. The leaderboard is ranked by EER, while ROC-AUC measures score-ranking discrimination and accuracy depends on the applied decision threshold. These metrics should be interpreted together, particularly where substantial discrepancies occur.
+> # 🌐 Cross-Dataset Performance Comparison
+
+The following table compares all eight architectures across ASVspoof2019 LA, ASVspoof2021 DF, WaveFake (LJSpeech–MelGAN), and In-the-Wild.
+
+Each cell reports **Test Accuracy / ROC-AUC / EER**, respectively. Models are evaluated using their reported fine-tuned checkpoints. Lower EER and higher ROC-AUC generally indicate better discrimination.
+
+| Model | ASVspoof2019 LA<br>Acc / AUC / EER | ASVspoof2021 DF<br>Acc / AUC / EER | WaveFake<br>Acc / AUC / EER | In-the-Wild<br>Acc / AUC / EER |
+|:---|:---:|:---:|:---:|:---:|
+| **Swin Transformer 8H** | 91.95% / 0.9844 / **5.86%** | 39.16% / 0.8883 / 20.75% | 50.01% / 0.7365 / **31.63%** | 38.01% / 0.4459 / 54.70% |
+| **Swin Transformer 4H** | 91.84% / 0.9826 / 5.97% | 44.09% / 0.8876 / 20.83% | 50.01% / 0.7008 / 34.25% | 39.07% / 0.4367 / 54.85% |
+| **ResNet18** | 82.23% / 0.9864 / 6.01% | 78.16% / 0.7609 / 32.93% | 50.02% / 0.4808 / 51.51% | 37.07% / 0.5438 / **47.36%** |
+| **ResNet50** | 84.55% / 0.9873 / 6.47% | 78.19% / 0.8497 / 24.70% | 50.00% / 0.4486 / 53.75% | 36.97% / 0.4544 / 52.02% |
+| **CNN-Transformer** | 57.40% / 0.9800 / 6.70% | 68.40% / 0.8792 / **20.70%** | 50.00% / 0.6735 / 37.54% | 35.70% / 0.5175 / **47.36%** |
+| **DeiT-Soft** | 90.50% / 0.9726 / 8.21% | 71.25% / 0.8327 / 24.92% | 50.59% / 0.5981 / 43.37% | 35.69% / 0.3997 / 56.69% |
+| **DeiT-Hard** | 80.07% / 0.9718 / 8.76% | 75.02% / 0.8369 / 24.30% | 50.48% / 0.5729 / 45.01% | 37.34% / 0.4183 / 55.48% |
+| **Vision Transformer (ViT)** | 81.68% / 0.9585 / 10.39% | 66.73% / 0.8338 / 24.09% | 52.20% / 0.5827 / 44.23% | 34.86% / 0.3159 / 63.86% |
+
+> **Note:** Accuracy is measured at the applied decision threshold, whereas ROC-AUC measures ranking performance and EER measures the operating point where false acceptance and false rejection rates are equal. Near-50% accuracy on a balanced dataset does not necessarily imply chance-level ranking performance. ROC-AUC values below 0.5 should be interpreted using the established class-label and score-polarity convention.
 
 ## Key Findings
 

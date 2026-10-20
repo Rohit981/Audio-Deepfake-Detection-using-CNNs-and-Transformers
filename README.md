@@ -1,8 +1,22 @@
 # Audio Deepfake Detection using CNNs and Transformers
 
-A PyTorch implementation comparing convolutional neural networks and transformer-based architectures for audio deepfake detection using Mel spectrogram classification.
+A PyTorch implementation comparing convolutional neural networks, 
+Transformer-based architectures, and hybrid models for audio deepfake 
+detection using log-mel spectrogram classification.
 
-This project evaluates seven deep learning architectures under a unified training pipeline and investigates optimization strategies including architecture-specific fine-tuning, layer-wise learning rate decay, cosine annealing warm restarts, gradient clipping, and Equal Error Rate (EER)-driven evaluation.
+This project evaluates eight model configurations on ASVspoof2019 
+Logical Access (LA) and investigates cross-dataset generalization on 
+ASVspoof2021 DF, In-the-Wild, and the LJSpeech–MelGAN subset of 
+WaveFake.
+
+The experiments compare ResNet18, ResNet50, a custom CNN–Transformer, 
+Vision Transformer (ViT), DeiT-Hard, DeiT-Soft, and Swin Transformer 
+configurations with four and eight attention heads.
+
+The training pipeline incorporates architecture-specific fine-tuning, 
+layer-wise learning-rate decay, gradient clipping, learning-rate 
+scheduling, and EER-based checkpoint selection. External datasets are 
+used to assess generalization beyond the source training domain.
 
 ## Features
 
@@ -14,11 +28,13 @@ This project evaluates seven deep learning architectures under a unified trainin
 - Vision Transformer (ViT)
 - DeiT (Hard & Soft Distillation)
 - Custom Swin Transformer
+- Architecture-specific fine-tuning
 - Layer-wise Learning Rate Decay (LLRD)
+- Linear Learning-Rate Warm-up
 - Cosine Annealing Warm Restarts
 - AdamW optimizer
 - Gradient Clipping
-- Checkpoint System
+- EER-based Checkpoint Selection
 - Early Stopping
 - ROC Curve
 - Equal Error Rate (EER)
@@ -29,7 +45,7 @@ This project evaluates seven deep learning architectures under a unified trainin
 ## Dataset
 
 Dataset:
-ASVspoof2019 Logical Access (LA)
+ASVspoof2019 Logical Access (LA), ASVspoof2021 DF, In-the-Wild, WaveFake
 
 The dataset is not included in this repository because of licensing restrictions.
 
@@ -95,20 +111,22 @@ RAM Cached Features
  BCEWithLogitsLoss
         │
         ▼
- AdamW Optimizer
-        │
-        ▼
- Gradient Clipping
-        │
-        ▼
- Cosine Annealing
- Warm Restarts
-        │
-        ▼
- Checkpointing
-        │
-        ▼
- Evaluation
+AdamW Optimizer
+      │
+      ▼
+Gradient Clipping
+      │
+      ▼
+Linear LR Warm-up
+      │
+      ▼
+Cosine Annealing
+      │
+      ▼
+  Checkpointing
+      │
+      ▼
+   Evaluation
 ```
 ## Experimental Pipeline
 
@@ -128,30 +146,65 @@ Phase III
 
 ## 📊 Results
 
-The final models were evaluated on the **ASVspoof2019 Logical Access (LA) evaluation set** using **Test Accuracy**, **ROC-AUC**, and **Equal Error Rate (EER)**. Lower EER indicates better spoof detection performance.
+The final models were evaluated on the ASVspoof2019 Logical Access (LA) evaluation set using Test Accuracy, ROC-AUC, and Equal Error Rate (EER). Models are ranked by EER, with lower values indicating better detection performance.
 
 | Rank | Model | Test Accuracy | ROC-AUC | EER ↓ |
-|:---:|:------------------|:------------:|:-------:|:------:|
-| 🥇 | **Swin Transformer** | **92.85%** | 0.9767 | **7.14%** |
-| 🥈 | **ResNet50** | **92.85%** | **0.9797** | 7.15% |
-| 🥉 | **ResNet18** | 92.34% | **0.9825** | 7.65% |
-| 4 | **CNN-Transformer** | 92.11% | 0.9800 | 7.89% |
-| 5 | **Vision Transformer (ViT)** | 91.67% | 0.9689 | 8.32% |
-| 6 | **DeiT-Hard** | 90.04% | 0.9620 | 9.97% |
-| 7 | **DeiT-Soft** | 89.25% | 0.9535 | 10.75% |
+|:---:|:--------------------------|:------------:|:-------:|:------:|
+| 🥇 | **Swin Transformer 8H** | **91.95%** | 0.9844 | **5.86%** |
+| 🥈 | **Swin Transformer 4H** | 91.84% | 0.9826 | 5.97% |
+| 🥉 | **ResNet18** | 82.23% | 0.9864 | 6.01% |
+| 4 | **ResNet50** | 84.55% | **0.9873** | 6.47% |
+| 5 | **CNN-Transformer** | 57.40% | 0.9800 | 6.70% |
+| 6 | **DeiT-Soft** | 90.50% | 0.9726 | 8.21% |
+| 7 | **DeiT-Hard** | 80.07% | 0.9718 | 8.76% |
+| 8 | **Vision Transformer (ViT)** | 81.68% | 0.9585 | 10.39% |
 
-> **Note:** Results correspond to the **best coherent evaluation checkpoints** obtained after architecture-specific fine-tuning. Model selection was based on agreement between **Equal Error Rate (EER)**, **ROC-AUC**, **classification accuracy**, and additional diagnostic analyses to avoid misleading results caused by optimization instability.
+> **Note:** Results correspond to the reported fine-tuned evaluation runs. The leaderboard is ranked by EER, while ROC-AUC measures score-ranking discrimination and accuracy depends on the applied decision threshold. These metrics should be interpreted together, particularly where substantial discrepancies occur.
+> # 🌐 Cross-Dataset Performance Comparison
+
+The following table compares all eight architectures across ASVspoof2019 LA, ASVspoof2021 DF, WaveFake (LJSpeech–MelGAN), and In-the-Wild.
+
+Each cell reports the Equal Error Rate (EER) for the corresponding dataset. Lower EER indicates better performance at the equal-error operating point.
+
+| Model | ASVspoof2019 LA | ASVspoof2021 DF | WaveFake | In-the-Wild |
+|:---|:---:|:---:|:---:|:---:|
+| **Swin Transformer 8H** | **5.86%** | 20.75% | **31.63%** | 54.70% |
+| **Swin Transformer 4H** | 5.97% | 20.83% | 34.25% | 54.85% |
+| **ResNet18** | 6.01% | 32.93% | 51.51% | **47.36%** |
+| **ResNet50** | 6.47% | 24.70% | 53.75% | 52.02% |
+| **CNN-Transformer** | 6.70% | **20.70%** | 37.54% | **47.36%** |
+| **DeiT-Soft** | 8.21% | 24.92% | 43.37% | 56.69% |
+| **DeiT-Hard** | 8.76% | 24.30% | 45.01% | 55.48% |
+| **Vision Transformer (ViT)** | 10.39% | 24.09% | 44.23% | 63.86% |
+
+> **Note:** Values represent Equal Error Rate (EER). Lower EER indicates better performance. Bold values highlight the lowest EER for each dataset.
 
 ## Key Findings
 
-- Swin Transformer achieved the lowest observed EER after architecture correction.
-- ResNet50 remained the strongest CNN baseline.
-- Aggressive fine-tuning produced misleadingly low EER values in some checkpoints.
-- Cross-validation using ROC-AUC, confusion matrices, and activation statistics proved essential for reliable model evaluation.
-- Layer-wise activation tracing identified numerical instability within the custom Swin implementation.
+- **Strong source-domain performance:** Swin Transformer 8H achieved the lowest ASVspoof2019 LA EER of 5.86%, followed closely by Swin Transformer 4H and ResNet18.
+
+- **Architecture rankings changed across datasets:** CNN–Transformer achieved the lowest EER on ASVspoof2021 DF, while Swin Transformer 8H  performed best on WaveFake.
+
+- **Real-world generalization remained challenging:** In-the-Wild produced EERs of 47.36% or higher across the evaluated models, indicating limited discrimination under the reported evaluation conditions.
+
+- **Convolutional models remained competitive:** ResNet18 and ResNet50 performed well on ASVspoof2019 LA, demonstrating that Transformer architectures do not consistently outperform CNNs.
+
+- **Accuracy and ranking metrics differed:** Several models achieved ROC-AUC values above chance despite test accuracies near 50% on WaveFake. This highlights the importance of examining decision thresholds alongside ROC-AUC and EER.
+
+- **Generalization remains the central challenge:** The substantial increase in EER across external datasets suggests that strong source-domain performance does not guarantee robust detection of unseen synthesis methods or audio sources.
+  
+Overall, Swin Transformer 8H was the strongest model by EER on ASVspoof2019 LA and WaveFake, while CNN–Transformer achieved the lowest EER on ASVspoof2021 DF and tied with ResNet18 on In-the-Wild. No architecture consistently dominated all four datasets. The findings emphasize that architecture selection should consider both source-domain performance and robustness to unseen synthesis systems and recording conditions. They also motivate further investigation into score calibration, preprocessing sensitivity, and potential reliance on dataset-specific acoustic features.
 
 ## Future Work
 
-- BEATs
-- AST (Audio Spectrogram Transformer)
-- Self-supervised Audio Transformers
+- **Self-Supervised Audio Representations:** Evaluate pretrained audio encoders such as BEATs and WavLM to investigate whether representations learned from broader audio data improve cross-dataset generalization.
+
+- **Audio Spectrogram Transformer (AST):** Compare AST against the existing vision-based Transformer architectures using the same evaluation protocol.
+
+- **Generalization Across Synthesis Systems:** Expand evaluation to additional vocoders and deepfake datasets to determine whether models learn transferable spoofing cues or rely on generator-specific characteristics.
+
+- **Robust Preprocessing:** Investigate the effects of compression, duration, spectrogram padding, and other preprocessing choices.
+
+- **Calibration and Threshold Transfer:** Examine how decision thresholds selected on source-domain validation data behave on external datasets.
+
+- **Controlled Ablation Studies:** Evaluate the contributions of layer-wise learning-rate decay, data augmentation, and architecture-specific optimization under controlled experimental conditions.

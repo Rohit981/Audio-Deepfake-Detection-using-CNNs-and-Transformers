@@ -29,7 +29,7 @@ This project evaluates seven deep learning architectures under a unified trainin
 ## Dataset
 
 Dataset:
-ASVspoof2019 Logical Access (LA)
+ASVspoof2019 Logical Access (LA), ASVspoof2021 DF, In-the-Wild, WaveFake
 
 The dataset is not included in this repository because of licensing restrictions.
 

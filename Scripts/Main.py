@@ -24,20 +24,20 @@ def main():
     test_dataset = ASVspoof2019.ASVpoof2019Dataset(part="eval",precompute=False, ram_caching=False)
 
     #Test ASVspoof2021DF test dataset
-    ASVspoof2021_test_dataset = ASVspoof2021DF.ASVspoof2021DFDataset(
-        base_dir=config.ASVspoof2021_test_dir,
-        sr=16000,
-        n_mels=128,
-        precompute=False,
-        ram_cache=False
-    )
-
-    # InTheWild_test_dataset = IntheWild.InTheWildDataset(
-    #     base_dir=config.inTheWild_dataset_dir,
+    # ASVspoof2021_test_dataset = ASVspoof2021DF.ASVspoof2021DFDataset(
+    #     base_dir=config.ASVspoof2021_test_dir,
     #     sr=16000,
     #     n_mels=128,
-    #     precompute=False
+    #     precompute=False,
+    #     ram_cache=False
     # )
+
+    InTheWild_test_dataset = IntheWild.InTheWildDataset(
+        base_dir=config.inTheWild_dataset_dir,
+        sr=16000,
+        n_mels=128,
+        precompute=False
+    )
 
     # WaveFake_test_dataset = WaveFake_Dataset.WaveFakeLJSpeechDataset(
     #     config=config,
@@ -69,7 +69,7 @@ def main():
     deit = DEIT.DEIT(config)
     
     #Track of active model
-    active_model = deit    
+    active_model = swin    
 
     #Initialize Trainer and run the epochs
     trainer = Trainer.ModelTrainer(model=active_model, 
@@ -92,7 +92,7 @@ def main():
                              config=config)
     
     trainer.RunEpochs(train_dataset=train_dataset,
-                      test_dataset=ASVspoof2021_test_dataset,
+                      test_dataset=InTheWild_test_dataset,
                       val_dataset=val_dataset,
                       n_epochs=config.n_epochs)
 

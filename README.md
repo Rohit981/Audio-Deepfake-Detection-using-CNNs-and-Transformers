@@ -163,19 +163,22 @@ Each cell reports **Test Accuracy / ROC-AUC / EER**, respectively. Models are ev
 
 ## Key Findings
 
-- Swin Transformer 8H achieved the lowest EER: The eight-head configuration recorded an EER of 5.86%, a test accuracy of 91.95%, and a ROC-AUC of 0.9844, producing the strongest overall result by EER.
+- Swin Transformer 8H demonstrated the strongest overall cross-dataset consistency: It achieved the lowest EER on ASVspoof2019 LA (5.86%) and WaveFake (31.63%), while recording the highest ROC-AUC on ASVspoof2021 DF (0.8883). However, its performance deteriorated substantially on In-the-Wild, where its EER increased to 54.70%, demonstrating that its advantages did not transfer uniformly across datasets.
 
-- Swin Transformer 4H demonstrated comparable performance: With an EER of 5.97% and an accuracy of 91.84%, the four-head configuration performed almost identically to the eight-head variant under the evaluated conditions.
+- Swin Transformer 4H produced results comparable to the eight-head configuration: It achieved an EER of 5.97% on ASVspoof2019 LA and 20.83% on ASVspoof2021 DF, placing it close to Swin Transformer 8H on both datasets. Its WaveFake EER of 34.25% was the second-lowest among the evaluated models, although its In-the-Wild EER increased to 54.85%.
 
-- ResNet architectures remained highly competitive: ResNet18 achieved an EER of 6.01%, while ResNet50 achieved the highest ROC-AUC of 0.9873. This demonstrates that convolutional architectures remain strong baselines for spectrogram-based audio deepfake detection.
+- CNN–Transformer performed particularly well on ASVspoof2021 DF: It achieved the lowest EER of 20.70%, narrowly outperforming both Swin Transformer variants. It also tied with ResNet18 for the lowest reported EER on In-the-Wild at 47.36%. However, its low evaluation accuracy on ASVspoof2019 LA (57.40%) and In-the-Wild (35.70%) highlights the importance of distinguishing ranking performance from threshold-dependent classification accuracy.
 
-- Fine-tuning changed the architectural rankings: The Swin Transformer variants moved ahead of the residual networks in EER, illustrating that the relative performance of the architectures depended on the training and fine-tuning configuration.
+- ResNet18 and ResNet50 remained competitive on the source dataset but generalized differently: ResNet18 achieved an EER of 6.01% on ASVspoof2019 LA and the highest In-the-Wild ROC-AUC among the evaluated architectures (0.5438), although this still indicated weak discrimination. ResNet50 achieved the highest source-domain ROC-AUC of 0.9873 and an EER of 24.70% on ASVspoof2021 DF, but its performance deteriorated considerably on WaveFake (53.75% EER) and In-the-Wild (52.02% EER).
 
-- Accuracy and ranking metrics must be interpreted together: The CNN–Transformer achieved an EER of 6.70% and a ROC-AUC of 0.9800, but its test accuracy was only 57.40%. This discrepancy warrants further verification of the checkpoint, score convention, and decision threshold before its operational performance can be established.
+- ViT and the DeiT variants showed weaker or less consistent generalization: ViT recorded EERs of 24.09% on ASVspoof2021 DF, 44.23% on WaveFake, and 63.86% on In-the-Wild. DeiT-Hard and DeiT-Soft achieved moderate results on ASVspoof2021 DF and WaveFake but had In-the-Wild EERs of 55.48% and 56.69%, respectively. These results suggest that the evaluated global-attention and distillation configurations did not provide a consistent advantage under cross-dataset conditions.
 
-- Metric validation was essential: Investigation of anomalous checkpoints highlighted the importance of examining ROC-AUC, EER, confusion matrices, score distributions, and model activations together rather than relying on a single reported metric.
+- External evaluation exposed a substantial generalization gap: The best EER increased from 5.86% on ASVspoof2019 LA to 20.70% on ASVspoof2021 DF, 31.63% on WaveFake, and 47.36% on In-the-Wild. The corresponding best ROC-AUC decreased from 0.9873 on ASVspoof2019 LA to 0.8883 on ASVspoof2021 DF, 0.7365 on WaveFake, and 0.5438 on In-the-Wild. This decline demonstrates that high source-domain performance did not guarantee reliable discrimination on unseen datasets.
+
+- Accuracy, ROC-AUC, and EER must be interpreted together: Several models recorded evaluation accuracies near 50% on WaveFake despite ROC-AUC values above chance, while the Swin Transformer variants showed similarly large discrepancies between accuracy and ROC-AUC on ASVspoof2021 DF. These results highlight the importance of examining decision-threshold transfer alongside ranking discrimination and EER rather than relying on any single metric.
   
-Overall, the fine-tuned results identify the Swin Transformer 8H as the leading architecture by EER, with Swin Transformer 4H and ResNet18 close behind. The results also demonstrate that CNNs remain competitive and that robust model selection requires careful validation of both threshold-independent discrimination and threshold-dependent classification performance.
+Overall, Swin Transformer 8H was the strongest model by EER on ASVspoof2019 LA and WaveFake, while CNN–Transformer achieved the lowest EER on ASVspoof2021 DF and tied with ResNet18 on In-the-Wild. No architecture consistently dominated all four datasets. The findings emphasize that architecture selection should consider both source-domain performance and robustness to unseen synthesis systems and recording conditions. They also motivate further investigation into score calibration, preprocessing sensitivity, and potential reliance on dataset-specific acoustic features.
+
 ## Future Work
 
 - BEATs
